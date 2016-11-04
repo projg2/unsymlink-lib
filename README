@@ -1,0 +1,49 @@
+SYMLINK_LIB=no migration tools
+(c) 2016 Michał Górny
+Licensed under 2-clause BSD license
+
+
+== Goal ==
+
+The tools are meant to help safely migrating live amd64 (or alike)
+system from the SYMLINK_LIB=yes to SYMLINK_LIB=no layout.
+
+The old (SYMLINK_LIB=yes) layout looks like this:
+
+  lib -> lib64   -- mostly libexec-like, plus 32-bit ld.so
+  lib64          -- 64-bit stuff
+  lib32          -- 32-bit stuff
+
+The new (SYMLINK_LIB=no) layout looks like this:
+
+  lib            -- libexec-like + 32-bit stuff
+  lib64          -- 64-bit stuff
+
+Therefore, the migration involves splitting lib and lib64, and merging
+lib32 into the former. Since lib contains key system components
+including kernel modules, gcc, portage, a unsafe migration procedure
+could result in serious, hard-to-fix breakage.
+
+
+== Procedure ==
+
+The following steps are used to accomplish a safe migration:
+
+1. A new temporary 'lib.new' directory is created. All files
+and directories belonging to the 'lib' directory (based on recorded file
+lists) are *copied* into this directory. All files and directories from
+lib32 are copied into this directory. Therefore, it resembles the new
+'lib' directory.
+
+2. The 'lib' symlink is replaced with a symlink to 'lib.new'. User can
+now reboot to test whether the migrated system will work. If it does not
+boot, reverting is as simple as restoring the old 'lib' symlink
+(and removing the failed 'lib.new' variant, as part of cleanup).
+
+3. If the system works, the migration can continue. The 'lib' symlink is
+removed, and 'lib.new' is renamed into 'lib'. 'lib32' is removed
+and replaced by a symlink to 'lib'. The stray files are removed from
+'lib64'.
+
+4. Eventually, once user rebuilds gcc (and possibly other packages
+relying on 'lib32' directory), the 'lib32' symlink can be removed.
