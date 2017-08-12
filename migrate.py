@@ -313,22 +313,20 @@ class MigrationState(object):
             print('Removing stale files from %s ...' % (lib64,))
             for p in self.includes[prefix]:
                 for root, dirs, files in os.walk(os.path.join(lib64, p), topdown=False):
-                    for f in files:
+                    for f in dirs + files:
                         fp = os.path.join(root, f)
                         rp = os.path.relpath(fp, lib64)
                         if rp not in self.excludes[prefix]:
                             try:
-                                os.unlink(fp)
+                                os.remove(fp)
                             except OSError as e:
-                                print('Unlinking %s failed: %s' % (fp, e))
-                    # remove empty directories
-                    for f in dirs:
-                        fp = os.path.join(root, f)
-                        try:
-                            os.rmdir(fp)
-                        except OSError as e:
-                            if e.errno not in (errno.ENOTEMPTY, errno.EEXIST):
-                                print('Removing %s failed: %s' % (fp, e))
+                                if e.errno in (errno.EISDIR, errno.EPERM):
+                                    try:
+                                        os.rmdir(fp)
+                                    except OSError as e:
+                                        print('Removing %s failed: %s' % (fp, e))
+                                else:
+                                    print('Removing %s failed: %s' % (fp, e))
 
     def save_state(self):
         with open(os.path.expanduser('~/.symlink_lib_migrate.state'), 'wb') as f:
