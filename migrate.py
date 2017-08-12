@@ -152,9 +152,19 @@ class MigrationState(object):
             lib_prefixes = frozenset(path_get_leftmost_dirs(lib_paths[prefix]))
             lib64_prefixes = frozenset(path_get_leftmost_dirs(lib64_paths[prefix]))
             lib_files = frozenset(path_get_top_files(lib_paths[prefix]))
+            lib64_files = frozenset(path_get_top_files(lib64_paths[prefix]))
 
             pure_lib = lib_prefixes - lib64_prefixes
             mixed_lib = lib_prefixes & lib64_prefixes
+
+            unowned_files = (frozenset(os.listdir(lib_path[prefix]))
+                             - lib_prefixes - lib64_prefixes
+                             - lib_files - lib64_files)
+            # library symlinks go to lib64
+            lib64_unowned = frozenset(x for x in unowned_files
+                                      if os.path.splitext(x)[1]
+                                      in ('.a', '.la', '.so'))
+            lib_unowned = unowned_files - lib64_unowned
 
             print('pure %s:' % (lib_path[prefix],), file=sys.stderr)
             for p in pure_lib:
@@ -166,6 +176,18 @@ class MigrationState(object):
             for p in mixed_lib:
                 print('\t%s' % (p,), file=sys.stderr)
 
+            if lib_unowned:
+                print('', file=sys.stderr)
+                print('unowned files for %s:' % (lib_path[prefix],), file=sys.stderr)
+                for p in lib_unowned:
+                    print('\t%s' % (p,), file=sys.stderr)
+
+            if lib64_unowned:
+                print('', file=sys.stderr)
+                print('unowned files for %s:' % (lib64_path[prefix],), file=sys.stderr)
+                for p in lib64_unowned:
+                    print('\t%s' % (p,), file=sys.stderr)
+
             # prepare the exclude lists
             excludes = set()
             for p in lib64_paths[prefix]:
@@ -175,7 +197,7 @@ class MigrationState(object):
                         break
 
             # store the data
-            self.includes[prefix] = lib_prefixes | lib_files
+            self.includes[prefix] = lib_prefixes | lib_files | lib_unowned
             self.excludes[prefix] = frozenset(excludes)
 
             # verify for conflicts
