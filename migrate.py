@@ -101,7 +101,8 @@ def nonfatal_remove(fp):
             try:
                 os.rmdir(fp)
             except OSError as e:
-                print('Removing %s failed: %s' % (fp, e))
+                if e.errno not in (errno.EEXIST, errno.ENOTEMPTY):
+                    print('Removing %s failed: %s' % (fp, e))
         else:
             print('Removing %s failed: %s' % (fp, e))
 
