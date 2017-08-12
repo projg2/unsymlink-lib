@@ -93,6 +93,19 @@ def path_get_top_files(paths):
             yield p
 
 
+def nonfatal_remove(fp):
+    try:
+        os.remove(fp)
+    except OSError as e:
+        if e.errno in (errno.EISDIR, errno.EPERM):
+            try:
+                os.rmdir(fp)
+            except OSError as e:
+                print('Removing %s failed: %s' % (fp, e))
+        else:
+            print('Removing %s failed: %s' % (fp, e))
+
+
 class MigrationState(object):
     __slots__ = ('eprefix', 'excludes', 'includes', 'prefixes')
 
@@ -317,16 +330,8 @@ class MigrationState(object):
                         fp = os.path.join(root, f)
                         rp = os.path.relpath(fp, lib64)
                         if rp not in self.excludes[prefix]:
-                            try:
-                                os.remove(fp)
-                            except OSError as e:
-                                if e.errno in (errno.EISDIR, errno.EPERM):
-                                    try:
-                                        os.rmdir(fp)
-                                    except OSError as e:
-                                        print('Removing %s failed: %s' % (fp, e))
-                                else:
-                                    print('Removing %s failed: %s' % (fp, e))
+                            nonfatal_remove(fp)
+                nonfatal_remove(os.path.join(lib64, p))
 
     def save_state(self):
         with open(os.path.expanduser('~/.symlink_lib_migrate.state'), 'wb') as f:
