@@ -1,9 +1,9 @@
-SYMLINK_LIB=no migration tools
+SYMLINK_LIB=no migration tool
 (c) 2017 Michał Górny
 Licensed under 2-clause BSD license
 
 
-TL;DR: Run 'migrate.py' as root and follow the on-screen instructions.
+TL;DR: Run 'unsymlink-lib' as root and follow the on-screen instructions.
 
 
 == Goal ==
