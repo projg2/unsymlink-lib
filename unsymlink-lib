@@ -241,6 +241,11 @@ class MigrationState(object):
                 print('the migration until a proper solution is found.', file=sys.stderr)
                 raise SystemExit(1)
 
+        if not any(lib32_paths.values()):
+            print('', file=sys.stderr)
+            print('Warning: no lib32 paths found. This is fine if you are running no-multilib,', file=sys.stderr)
+            print('otherwise this is suspicious.', file=sys.stderr)
+
     def migrate(self):
         # create the lib.new directories
         for prefix in self.prefixes:
