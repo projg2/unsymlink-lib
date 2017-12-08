@@ -108,7 +108,7 @@ def nonfatal_remove(fp):
 
 
 class MigrationState(object):
-    __slots__ = ('eprefix', 'excludes', 'includes', 'prefixes')
+    __slots__ = ('eprefix', 'excludes', 'includes', 'prefixes', 'has_lib32')
 
     def __init__(self, eprefix):
         self.eprefix = eprefix
@@ -241,7 +241,8 @@ class MigrationState(object):
                 print('the migration until a proper solution is found.', file=sys.stderr)
                 raise SystemExit(1)
 
-        if not any(lib32_paths.values()):
+        self.has_lib32 = any(lib32_paths.values())
+        if not self.has_lib32:
             print('', file=sys.stderr)
             print('Warning: no lib32 paths found. This is fine if you are running no-multilib,', file=sys.stderr)
             print('otherwise this is suspicious.', file=sys.stderr)
@@ -344,12 +345,12 @@ class MigrationState(object):
 
     def save_state(self):
         with open(os.path.expanduser('~/.symlink_lib_migrate.state'), 'wb') as f:
-            pickle.dump((self.prefixes, self.excludes, self.includes), f)
+            pickle.dump((self.prefixes, self.excludes, self.includes, self.has_lib32), f)
 
     def load_state(self):
         try:
             with open(os.path.expanduser('~/.symlink_lib_migrate.state'), 'rb') as f:
-                self.prefixes, self.excludes, self.includes = pickle.load(f)
+                self.prefixes, self.excludes, self.includes, self.has_lib32 = pickle.load(f)
         except (OSError, IOError) as e:
             if e.errno == errno.ENOENT:
                 return False
@@ -451,17 +452,24 @@ def main():
         print('the following to your make.conf (or equivalent):', file=sys.stderr)
         print('', file=sys.stderr)
         print('\tSYMLINK_LIB=no', file=sys.stderr)
-        print('\tLIBDIR_x86=lib', file=sys.stderr)
+        if m.has_lib32:
+            print('\tLIBDIR_x86=lib', file=sys.stderr)
         print('', file=sys.stderr)
-        print('Afterwards, please rebuild all installed GCC versions and all', file=sys.stderr)
-        print('packages installing into lib32, e.g.:', file=sys.stderr)
+        print('Afterwards, please rebuild all installed GCC versions', end='', file=sys.stderr)
+        if m.has_lib32:
+            print(' and all\npackages installing into lib32', end='', file=sys.stderr)
+        print(', e.g.:', file=sys.stderr)
         print('', file=sys.stderr)
-        print('\temerge -1v /usr/lib/gcc /lib32 /usr/lib32', file=sys.stderr)
+        print('\temerge -1v /usr/lib/gcc', end='', file=sys.stderr)
+        if m.has_lib32:
+            print(' /lib32 /usr/lib32', end='', file=sys.stderr)
         print('', file=sys.stderr)
-        print('When the rebuilds are complete, the package manager should remove', file=sys.stderr)
-        print('the lib32 symlink. If it does not, do:', file=sys.stderr)
-        print('', file=sys.stderr)
-        print('\trm /lib32 /usr/lib32', file=sys.stderr)
+        if m.has_lib32:
+            print('', file=sys.stderr)
+            print('When the rebuilds are complete, the package manager should remove', file=sys.stderr)
+            print('the lib32 symlink. If it does not, do:', file=sys.stderr)
+            print('', file=sys.stderr)
+            print('\trm /lib32 /usr/lib32', file=sys.stderr)
     else:
         raise NotImplementedError()
 
