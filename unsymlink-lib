@@ -107,6 +107,14 @@ def nonfatal_remove(fp):
             print('Removing %s failed: %s' % (fp, e))
 
 
+def is_lib64_candidate(path):
+    if os.path.splitext(path)[1] in ('.a', '.la', '.so'):
+        return True
+    if '.so.' in path:
+        return True
+    return False
+
+
 class MigrationState(object):
     __slots__ = ('eprefix', 'excludes', 'includes', 'prefixes', 'has_lib32')
 
@@ -176,8 +184,7 @@ class MigrationState(object):
                              - lib_files - lib64_files)
             # library symlinks go to lib64
             lib64_unowned = frozenset(x for x in unowned_files
-                                      if os.path.splitext(x)[1]
-                                      in ('.a', '.la', '.so'))
+                                      if is_lib64_candidate(x))
             lib_unowned = unowned_files - lib64_unowned
 
             print('pure %s:' % (lib_path[prefix],), file=sys.stderr)
