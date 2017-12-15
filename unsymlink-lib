@@ -342,12 +342,13 @@ class MigrationState(object):
             lib64 = os.path.join(prefix, 'lib64')
             print('Removing stale files from %s ...' % (lib64,))
             for p in self.includes[prefix]:
-                for root, dirs, files in os.walk(os.path.join(lib64, p), topdown=False):
-                    for f in dirs + files:
-                        fp = os.path.join(root, f)
-                        rp = os.path.relpath(fp, lib64)
-                        if rp not in self.excludes[prefix]:
-                            nonfatal_remove(fp)
+                if not os.path.islink(os.path.join(lib64, p)):
+                    for root, dirs, files in os.walk(os.path.join(lib64, p), topdown=False):
+                        for f in dirs + files:
+                            fp = os.path.join(root, f)
+                            rp = os.path.relpath(fp, lib64)
+                            if rp not in self.excludes[prefix]:
+                                nonfatal_remove(fp)
                 nonfatal_remove(os.path.join(lib64, p))
 
     def save_state(self):
