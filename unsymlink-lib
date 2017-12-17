@@ -254,16 +254,20 @@ class MigrationState(object):
             print('Warning: no lib32 paths found. This is fine if you are running no-multilib,', file=sys.stderr)
             print('otherwise this is suspicious.', file=sys.stderr)
 
-    def migrate(self):
+    def migrate(self, pretend):
         # create the lib.new directories
         for prefix in self.prefixes:
             lib = os.path.join(prefix, 'lib')
             lib32 = os.path.join(prefix, 'lib32')
             lib_new = os.path.join(prefix, 'lib.new')
 
-            os.mkdir(lib_new)
+            if pretend:
+                print('mkdir %s' % lib_new)
+            else:
+                os.mkdir(lib_new)
 
-            print('[%s] & %s -> %s ...' % (lib32, lib, lib_new), file=sys.stderr)
+            if not pretend:
+                print('[%s] & %s -> %s ...' % (lib32, lib, lib_new), file=sys.stderr)
             cmd = ['cp', '-a', '--reflink=auto', '--']
             if os.path.isdir(lib32):
                 cmd.append(os.path.join(lib32, '.'))
@@ -274,73 +278,100 @@ class MigrationState(object):
             cmd.append(lib_new + '/')
 
             if len(cmd) > 5:
-                p = subprocess.Popen(cmd)
-                if p.wait() != 0:
-                    print('Non-successful return from cp: %d' % (p.returncode,), file=sys.stderr)
-                    raise SystemExit(1)
+                if pretend:
+                    print(' '.join(cmd))
+                else:
+                    p = subprocess.Popen(cmd)
+                    if p.wait() != 0:
+                        print('Non-successful return from cp: %d' % (p.returncode,), file=sys.stderr)
+                        raise SystemExit(1)
 
             if self.excludes[prefix]:
-                print('Remove extraneous files from %s ...' % (lib_new,), file=sys.stderr)
+                if not pretend:
+                    print('Remove extraneous files from %s ...' % (lib_new,), file=sys.stderr)
                 # remove excluded stuff
                 for p in self.excludes[prefix]:
                     fp = os.path.join(lib_new, p)
-                    os.unlink(fp)
-                    try:
-                        os.removedirs(os.path.dirname(fp))
-                    except OSError as e:
-                        if e.errno not in (errno.ENOTEMPTY, errno.EEXIST):
-                            raise
+                    if pretend:
+                        print('rm %s' % fp)
+                        print('rmdir -p --ignore-fail-on-non-empty %s'
+                              % os.path.dirname(fp))
+                    else:
+                        os.unlink(fp)
+
+                        try:
+                            os.removedirs(os.path.dirname(fp))
+                        except OSError as e:
+                            if e.errno not in (errno.ENOTEMPTY, errno.EEXIST):
+                                raise
 
         for prefix in self.prefixes:
             lib = os.path.join(prefix, 'lib')
             lib_tmp = os.path.join(prefix, 'lib.tmp')
-            print('Updating: %s -> lib.new ...' % (lib,), file=sys.stderr)
-            os.symlink('lib.new', lib_tmp)
-            os.rename(lib_tmp, lib)
+            if pretend:
+                print('ln -s -f -T lib.new %s' % lib)
+            else:
+                print('Updating: %s -> lib.new ...' % (lib,), file=sys.stderr)
+                os.symlink('lib.new', lib_tmp)
+                os.rename(lib_tmp, lib)
 
-    def rollback(self):
+    def rollback(self, pretend):
         # restore the old 'lib' symlink
         for prefix in self.prefixes:
             lib = os.path.join(prefix, 'lib')
             lib_tmp = os.path.join(prefix, 'lib.tmp')
-            print('Updating: %s -> lib64 ...' % (lib,), file=sys.stderr)
-            os.symlink('lib64', lib_tmp)
-            os.rename(lib_tmp, lib)
+            if pretend:
+                print('ln -s -f -T lib64 %s' % lib)
+            else:
+                print('Updating: %s -> lib64 ...' % (lib,), file=sys.stderr)
+                os.symlink('lib64', lib_tmp)
+                os.rename(lib_tmp, lib)
 
         # clean up lib.new
         for prefix in self.prefixes:
             lib_new = os.path.join(prefix, 'lib.new')
-            print('Removing: %s ...' % (lib_new,))
-            subprocess.Popen(['rm', '-rf', '--', lib_new]).wait()
+            if pretend:
+                print('rm -rf -- %s' % lib_new)
+            else:
+                print('Removing: %s ...' % (lib_new,))
+                subprocess.Popen(['rm', '-rf', '--', lib_new]).wait()
 
-    def finish(self):
+    def finish(self, pretend):
         # replace the 'lib' symlink with the directory
         for prefix in self.prefixes:
             lib = os.path.join(prefix, 'lib')
             lib_new = os.path.join(prefix, 'lib.new')
-            print('Renaming %s -> %s ...' % (lib_new, lib), file=sys.stderr)
-            os.unlink(lib)
-            os.rename(lib_new, lib)
+            if pretend:
+                print('mv -f -T %s %s' % (lib_new, lib))
+            else:
+                print('Renaming %s -> %s ...' % (lib_new, lib), file=sys.stderr)
+                os.unlink(lib)
+                os.rename(lib_new, lib)
 
         # replace 'lib32' with a symlink
         for prefix in self.prefixes:
             lib32 = os.path.join(prefix, 'lib32')
             if os.path.isdir(lib32):
-                print('Removing: %s ...' % (lib32,), file=sys.stderr)
-                if subprocess.Popen(['rm', '-rf', '--', lib32]).wait() != 0:
-                    print('Removal failed for %s, you need to remove it manually and replace', file=sys.stderr)
-                    print('with a symlink to lib.', file=sys.stderr)
+                if pretend:
+                    print('rm -rf -- %s' % lib32)
+                    print('ln -s lib %s' % lib32)
                 else:
-                    print('Updating: %s -> lib ...' % (lib32,), file=sys.stderr)
-                    try:
-                        os.symlink('lib', lib32)
-                    except OSError:
-                        print('Symlinking failed for %s, please symlink it manually to lib.', file=sys.stderr)
+                    print('Removing: %s ...' % (lib32,), file=sys.stderr)
+                    if subprocess.Popen(['rm', '-rf', '--', lib32]).wait() != 0:
+                        print('Removal failed for %s, you need to remove it manually and replace', file=sys.stderr)
+                        print('with a symlink to lib.', file=sys.stderr)
+                    else:
+                        print('Updating: %s -> lib ...' % (lib32,), file=sys.stderr)
+                        try:
+                            os.symlink('lib', lib32)
+                        except OSError:
+                            print('Symlinking failed for %s, please symlink it manually to lib.', file=sys.stderr)
 
         # clean up extraneous files from 'lib64'
         for prefix in self.prefixes:
             lib64 = os.path.join(prefix, 'lib64')
-            print('Removing stale files from %s ...' % (lib64,))
+            if not pretend:
+                print('Removing stale files from %s ...' % (lib64,))
             for p in self.includes[prefix]:
                 if not os.path.islink(os.path.join(lib64, p)):
                     for root, dirs, files in os.walk(os.path.join(lib64, p), topdown=False):
@@ -348,8 +379,14 @@ class MigrationState(object):
                             fp = os.path.join(root, f)
                             rp = os.path.relpath(fp, lib64)
                             if rp not in self.excludes[prefix]:
-                                nonfatal_remove(fp)
-                nonfatal_remove(os.path.join(lib64, p))
+                                if pretend:
+                                    print('rm -d %s' % fp)
+                                else:
+                                    nonfatal_remove(fp)
+                if pretend:
+                    print('rm -d %s' % os.path.join(lib64, p))
+                else:
+                    nonfatal_remove(os.path.join(lib64, p))
 
     def save_state(self):
         with open(os.path.expanduser('~/.symlink_lib_migrate.state'), 'wb') as f:
@@ -385,6 +422,8 @@ def main():
                       const='rollback', help='Revert the migration (after --migrate)')
     argp.add_argument('--finish', action='store_const', dest='action',
                       const='finish', help='Finish the migration (clean up)')
+    argp.add_argument('-p', '--pretend', action='store_true',
+                      help='Do not modify the system, only print what would happen')
     args = argp.parse_args()
 
     is_root = os.geteuid() == 0
@@ -423,17 +462,19 @@ def main():
         m = MigrationState('/')
         if not m.load_state():
             print('State file could not be loaded. Did you run --analyze?', file=sys.stderr)
-        m.migrate()
-        print('', file=sys.stderr)
-        print('Initial migration complete. Please now test whether your system works', file=sys.stderr)
-        print('correctly. It might be a good idea to try rebooting it. Once tested,', file=sys.stderr)
-        print('complete the migration and clean up backup files via calling:', file=sys.stderr)
-        print('', file=sys.stderr)
-        print('\t%s --finish' % (sys.argv[0],), file=sys.stderr)
-        print('', file=sys.stderr)
-        print('If you wish to revert the changes, run:', file=sys.stderr)
-        print('', file=sys.stderr)
-        print('\t%s --rollback' % (sys.argv[0],), file=sys.stderr)
+        print('Those are the actions that would be performed:', file=sys.stderr)
+        m.migrate(pretend=args.pretend)
+        if not args.pretend:
+            print('', file=sys.stderr)
+            print('Initial migration complete. Please now test whether your system works', file=sys.stderr)
+            print('correctly. It might be a good idea to try rebooting it. Once tested,', file=sys.stderr)
+            print('complete the migration and clean up backup files via calling:', file=sys.stderr)
+            print('', file=sys.stderr)
+            print('\t%s --finish' % (sys.argv[0],), file=sys.stderr)
+            print('', file=sys.stderr)
+            print('If you wish to revert the changes, run:', file=sys.stderr)
+            print('', file=sys.stderr)
+            print('\t%s --rollback' % (sys.argv[0],), file=sys.stderr)
     elif args.action == 'rollback':
         verify_migrated('/')
         verify_migrated('/usr')
@@ -441,11 +482,13 @@ def main():
         m = MigrationState('/')
         if not m.load_state():
             print('State file could not be loaded. Did you run --analyze?', file=sys.stderr)
-        m.rollback()
-        m.clear_state()
-        print('', file=sys.stderr)
-        print('Rollback complete. Your system should now be as before the migration.', file=sys.stderr)
-        print('Please look into fixing your issues and try again.', file=sys.stderr)
+        print('Those are the actions that would be performed:', file=sys.stderr)
+        m.rollback(pretend=args.pretend)
+        if not args.pretend:
+            m.clear_state()
+            print('', file=sys.stderr)
+            print('Rollback complete. Your system should now be as before the migration.', file=sys.stderr)
+            print('Please look into fixing your issues and try again.', file=sys.stderr)
     elif args.action == 'finish':
         verify_migrated('/')
         verify_migrated('/usr')
@@ -453,31 +496,33 @@ def main():
         m = MigrationState('/')
         if not m.load_state():
             print('State file could not be loaded. Did you run --analyze?', file=sys.stderr)
-        m.finish()
-        m.clear_state()
-        print('', file=sys.stderr)
-        print('Migration complete. Please switch to the new profiles, or add', file=sys.stderr)
-        print('the following to your make.conf (or equivalent):', file=sys.stderr)
-        print('', file=sys.stderr)
-        print('\tSYMLINK_LIB=no', file=sys.stderr)
-        if m.has_lib32:
-            print('\tLIBDIR_x86=lib', file=sys.stderr)
-        print('', file=sys.stderr)
-        print('Afterwards, please rebuild all installed GCC versions', end='', file=sys.stderr)
-        if m.has_lib32:
-            print(' and all\npackages installing into lib32', end='', file=sys.stderr)
-        print(', e.g.:', file=sys.stderr)
-        print('', file=sys.stderr)
-        print('\temerge -1v /usr/lib/gcc', end='', file=sys.stderr)
-        if m.has_lib32:
-            print(' /lib32 /usr/lib32', end='', file=sys.stderr)
-        print('', file=sys.stderr)
-        if m.has_lib32:
+        print('Those are the actions that would be performed:', file=sys.stderr)
+        m.finish(pretend=args.pretend)
+        if not args.pretend:
+            m.clear_state()
             print('', file=sys.stderr)
-            print('When the rebuilds are complete, the package manager should remove', file=sys.stderr)
-            print('the lib32 symlink. If it does not, do:', file=sys.stderr)
+            print('Migration complete. Please switch to the new profiles, or add', file=sys.stderr)
+            print('the following to your make.conf (or equivalent):', file=sys.stderr)
             print('', file=sys.stderr)
-            print('\trm /lib32 /usr/lib32', file=sys.stderr)
+            print('\tSYMLINK_LIB=no', file=sys.stderr)
+            if m.has_lib32:
+                print('\tLIBDIR_x86=lib', file=sys.stderr)
+            print('', file=sys.stderr)
+            print('Afterwards, please rebuild all installed GCC versions', end='', file=sys.stderr)
+            if m.has_lib32:
+                print(' and all\npackages installing into lib32', end='', file=sys.stderr)
+            print(', e.g.:', file=sys.stderr)
+            print('', file=sys.stderr)
+            print('\temerge -1v /usr/lib/gcc', end='', file=sys.stderr)
+            if m.has_lib32:
+                print(' /lib32 /usr/lib32', end='', file=sys.stderr)
+            print('', file=sys.stderr)
+            if m.has_lib32:
+                print('', file=sys.stderr)
+                print('When the rebuilds are complete, the package manager should remove', file=sys.stderr)
+                print('the lib32 symlink. If it does not, do:', file=sys.stderr)
+                print('', file=sys.stderr)
+                print('\trm /lib32 /usr/lib32', file=sys.stderr)
     else:
         raise NotImplementedError()
 
