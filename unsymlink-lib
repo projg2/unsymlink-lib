@@ -93,6 +93,10 @@ def path_get_top_files(paths):
             yield p
 
 
+def path_starts_with(haystack, needle):
+    return (haystack + '/').startswith(needle + '/')
+
+
 def nonfatal_remove(fp):
     try:
         os.remove(fp)
@@ -213,7 +217,7 @@ class MigrationState(object):
             excludes = set()
             for p in lib64_paths[prefix]:
                 for tp in mixed_lib:
-                    if p.startswith(tp):
+                    if path_starts_with(p, tp):
                         excludes.add(p)
                         break
 
