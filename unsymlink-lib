@@ -414,17 +414,21 @@ class MigrationState(object):
 
     def save_state(self):
         with open(os.path.expanduser('~/.symlink_lib_migrate.state'), 'wb') as f:
-            pickle.dump((self.prefixes, self.excludes, self.includes, self.has_lib32), f)
+            pickle.dump((self.eroot, self.prefixes, self.excludes, self.includes, self.has_lib32), f)
 
     def load_state(self):
         try:
             with open(os.path.expanduser('~/.symlink_lib_migrate.state'), 'rb') as f:
-                self.prefixes, self.excludes, self.includes, self.has_lib32 = pickle.load(f)
+                orig_eroot, self.prefixes, self.excludes, self.includes, self.has_lib32 = pickle.load(f)
         except (OSError, IOError) as e:
             if e.errno == errno.ENOENT:
                 return False
             else:
                 raise
+
+        if self.eroot != orig_eroot:
+            raise NotImplementedError('The same --root must be passed to each invocation')
+
         return True
 
     def clear_state(self):
