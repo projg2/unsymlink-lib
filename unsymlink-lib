@@ -125,16 +125,17 @@ class MigrationState(object):
     def __init__(self, eprefix):
         self.eprefix = eprefix
 
-    def analyze(self):
+    def analyze(self, usr_merge, real_prefixes):
         from portage import create_trees
 
         print('Analyzing files installed into lib & lib64...', file=sys.stderr)
 
+        # use all canonical prefixes that could be present in vdb
+        usr_prefix = os.path.join(self.eprefix, 'usr')
         subprefixes = (
             self.eprefix,
-            os.path.join(self.eprefix, 'usr'),
+            usr_prefix,
         )
-        self.prefixes = subprefixes
 
         lib_path = dict((prefix, os.path.join(prefix, 'lib/')) for prefix in subprefixes)
         lib32_path = dict((prefix, os.path.join(prefix, 'lib32/')) for prefix in subprefixes)
@@ -166,10 +167,27 @@ class MigrationState(object):
         pure_lib = {}
         mixed_lib = {}
 
+        if usr_merge:
+            print('', file=sys.stderr)
+            print('/usr merge detected!', file=sys.stderr)
+
+            # figure out which of the prefixes is real, and the other
+            # will be the aliased one
+            real_prefix = real_prefixes[0]
+            if real_prefix == usr_prefix:
+                alias_prefix = self.eprefix
+            else:
+                alias_prefix = usr_prefix
+
+            for d in lib_paths, lib32_paths, lib64_paths:
+                d[real_prefix].update(d[alias_prefix])
+                del d[alias_prefix]
+
+        self.prefixes = real_prefixes
         self.excludes = {}
         self.includes = {}
 
-        for prefix in subprefixes:
+        for prefix in real_prefixes:
             print('', file=sys.stderr)
             lib_paths[prefix] = frozenset(lib_paths[prefix])
             lib32_paths[prefix] = frozenset(lib32_paths[prefix])
@@ -439,12 +457,29 @@ def main():
             print('[Running as unprivileged user, results will not be saved]',
                   file=sys.stderr)
 
+    # if /lib64 and /usr/lib64 are the same directory, we'll dealing
+    # with /usr merge most likely
+    if os.path.samefile('/lib64', '/usr/lib64'):
+        usr_merge = True
+        # use whichever prefix has the real directories
+        if not os.path.islink('/lib64'):
+            prefixes = ['/']
+        else:
+            prefixes = ['/usr']
+    else:
+        usr_merge = False
+        prefixes = ['/', '/usr']
+
     if args.action == 'analyze':
-        verify_initial('/')
-        verify_initial('/usr')
+        for p in prefixes:
+            verify_initial(p)
 
         m = MigrationState('/')
-        m.analyze()
+        m.analyze(usr_merge, prefixes)
+
+        # safety check
+        assert m.prefixes == prefixes
+
         if is_root:
             m.save_state()
             print('', file=sys.stderr)
@@ -460,8 +495,8 @@ def main():
             print('Everything looks good from here. However, you need to rerun', file=sys.stderr)
             print('the process as root to confirm.', file=sys.stderr)
     elif args.action == 'migrate':
-        verify_initial('/')
-        verify_initial('/usr')
+        for p in prefixes:
+            verify_initial(p)
 
         m = MigrationState('/')
         if not m.load_state():
@@ -480,8 +515,8 @@ def main():
             print('', file=sys.stderr)
             print('\t%s --rollback' % (sys.argv[0],), file=sys.stderr)
     elif args.action == 'rollback':
-        verify_migrated('/')
-        verify_migrated('/usr')
+        for p in prefixes:
+            verify_migrated(p)
 
         m = MigrationState('/')
         if not m.load_state():
@@ -494,8 +529,8 @@ def main():
             print('Rollback complete. Your system should now be as before the migration.', file=sys.stderr)
             print('Please look into fixing your issues and try again.', file=sys.stderr)
     elif args.action == 'finish':
-        verify_migrated('/')
-        verify_migrated('/usr')
+        for p in prefixes:
+            verify_migrated(p)
 
         m = MigrationState('/')
         if not m.load_state():
