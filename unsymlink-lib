@@ -135,6 +135,7 @@ class MigrationState(object):
         subprefixes = (
             self.eroot,
             usr_prefix,
+            os.path.join(usr_prefix, 'local'),
         )
 
         lib_path = dict((prefix, os.path.join(prefix, 'lib/')) for prefix in subprefixes)
@@ -478,6 +479,9 @@ def main():
     else:
         usr_merge = False
         prefixes = [top_dir, usr_dir]
+
+    # add /usr/local too
+    prefixes.append(os.path.join(usr_dir, 'local'))
 
     if args.action == 'analyze':
         for p in prefixes:
