@@ -120,10 +120,10 @@ def is_lib64_candidate(path):
 
 
 class MigrationState(object):
-    __slots__ = ('eprefix', 'excludes', 'includes', 'prefixes', 'has_lib32')
+    __slots__ = ('eroot', 'excludes', 'includes', 'prefixes', 'has_lib32')
 
-    def __init__(self, eprefix):
-        self.eprefix = eprefix
+    def __init__(self, eroot):
+        self.eroot = eroot
 
     def analyze(self, usr_merge, real_prefixes):
         from portage import create_trees
@@ -131,9 +131,9 @@ class MigrationState(object):
         print('Analyzing files installed into lib & lib64...', file=sys.stderr)
 
         # use all canonical prefixes that could be present in vdb
-        usr_prefix = os.path.join(self.eprefix, 'usr')
+        usr_prefix = os.path.join(self.eroot, 'usr')
         subprefixes = (
-            self.eprefix,
+            self.eroot,
             usr_prefix,
         )
 
@@ -145,7 +145,7 @@ class MigrationState(object):
         lib32_paths = dict((prefix, set()) for prefix in subprefixes)
         lib64_paths = dict((prefix, set()) for prefix in subprefixes)
 
-        trees = create_trees()
+        trees = create_trees(config_root=self.eroot)
         vardb = trees[max(trees)]['vartree'].dbapi
         for p in vardb.cpv_all():
             for f, details in vardb._dblink(p).getcontents().items():
@@ -153,6 +153,7 @@ class MigrationState(object):
                 # files contained within them
                 if details[0] == 'dir':
                     continue
+                f = os.path.join(self.eroot, f.lstrip('/'))
                 for prefix in subprefixes:
                     if f.startswith(lib_path[prefix]):
                         lib_paths[prefix].add(f[len(lib_path[prefix]):])
@@ -175,7 +176,7 @@ class MigrationState(object):
             # will be the aliased one
             real_prefix = real_prefixes[0]
             if real_prefix == usr_prefix:
-                alias_prefix = self.eprefix
+                alias_prefix = self.eroot
             else:
                 alias_prefix = usr_prefix
 
@@ -446,6 +447,8 @@ def main():
                       const='finish', help='Finish the migration (clean up)')
     argp.add_argument('-p', '--pretend', action='store_true',
                       help='Do not modify the system, only print what would happen')
+    argp.add_argument('--root', default='/',
+                      help='Run on specified alternate system root')
     args = argp.parse_args()
 
     is_root = os.geteuid() == 0
@@ -457,24 +460,30 @@ def main():
             print('[Running as unprivileged user, results will not be saved]',
                   file=sys.stderr)
 
+    # helpful consts
+    top_dir = args.root
+    usr_dir = os.path.join(top_dir, 'usr')
+    lib64_dir = os.path.join(top_dir, 'lib64')
+    usr_lib64_dir = os.path.join(usr_dir, 'lib64')
+
     # if /lib64 and /usr/lib64 are the same directory, we'll dealing
     # with /usr merge most likely
-    if os.path.samefile('/lib64', '/usr/lib64'):
+    if os.path.samefile(lib64_dir, usr_lib64_dir):
         usr_merge = True
         # use whichever prefix has the real directories
-        if not os.path.islink('/lib64'):
-            prefixes = ['/']
+        if not os.path.islink(lib64_dir):
+            prefixes = [top_dir]
         else:
-            prefixes = ['/usr']
+            prefixes = [usr_dir]
     else:
         usr_merge = False
-        prefixes = ['/', '/usr']
+        prefixes = [top_dir, usr_dir]
 
     if args.action == 'analyze':
         for p in prefixes:
             verify_initial(p)
 
-        m = MigrationState('/')
+        m = MigrationState(top_dir)
         m.analyze(usr_merge, prefixes)
 
         # safety check
@@ -498,7 +507,7 @@ def main():
         for p in prefixes:
             verify_initial(p)
 
-        m = MigrationState('/')
+        m = MigrationState(top_dir)
         if not m.load_state():
             print('State file could not be loaded. Did you run --analyze?', file=sys.stderr)
         print('Those are the actions that would be performed:', file=sys.stderr)
@@ -518,7 +527,7 @@ def main():
         for p in prefixes:
             verify_migrated(p)
 
-        m = MigrationState('/')
+        m = MigrationState(top_dir)
         if not m.load_state():
             print('State file could not be loaded. Did you run --analyze?', file=sys.stderr)
         print('Those are the actions that would be performed:', file=sys.stderr)
@@ -532,7 +541,7 @@ def main():
         for p in prefixes:
             verify_migrated(p)
 
-        m = MigrationState('/')
+        m = MigrationState(top_dir)
         if not m.load_state():
             print('State file could not be loaded. Did you run --analyze?', file=sys.stderr)
         print('Those are the actions that would be performed:', file=sys.stderr)
@@ -552,16 +561,20 @@ def main():
                 print(' and all\npackages installing into lib32', end='', file=sys.stderr)
             print(', e.g.:', file=sys.stderr)
             print('', file=sys.stderr)
-            print('\temerge -1v /usr/lib/gcc', end='', file=sys.stderr)
+            print('\temerge -1v %s' % os.path.join(top_dir, 'usr/lib/gcc'), end='', file=sys.stderr)
             if m.has_lib32:
-                print(' /lib32 /usr/lib32', end='', file=sys.stderr)
+                print(' %s %s' % (os.path.join(top_dir, 'lib32'),
+                                  os.path.join(top_dir, 'usr/lib32')),
+                      end='', file=sys.stderr)
             print('', file=sys.stderr)
             if m.has_lib32:
                 print('', file=sys.stderr)
                 print('When the rebuilds are complete, the package manager should remove', file=sys.stderr)
                 print('the lib32 symlink. If it does not, do:', file=sys.stderr)
                 print('', file=sys.stderr)
-                print('\trm /lib32 /usr/lib32', file=sys.stderr)
+                print('\trm %s %s' % (os.path.join(top_dir, 'lib32'),
+                                      os.path.join(top_dir, 'usr/lib32')),
+                      file=sys.stderr)
     else:
         raise NotImplementedError()
 
