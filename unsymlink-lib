@@ -130,11 +130,14 @@ class MigrationState(object):
 
         print('Analyzing files installed into lib & lib64...', file=sys.stderr)
 
-        subprefixes = (
-            self.eprefix,
-            os.path.join(self.eprefix, 'usr'),
-        )
-        self.prefixes = subprefixes
+        usr_prefix = os.path.join(self.eprefix, 'usr')
+        subprefixes = [self.eprefix, usr_prefix]
+
+        usr_merge = False
+        # check for /usr merge, either via /usr -> ., or via /lib -> /usr/lib
+        if os.path.samefile(os.path.join(self.eprefix, 'lib'),
+                            os.path.join(usr_prefix, 'lib')):
+            usr_merge = True
 
         lib_path = dict((prefix, os.path.join(prefix, 'lib/')) for prefix in subprefixes)
         lib32_path = dict((prefix, os.path.join(prefix, 'lib32/')) for prefix in subprefixes)
@@ -166,6 +169,15 @@ class MigrationState(object):
         pure_lib = {}
         mixed_lib = {}
 
+        if usr_merge:
+            # merge vdb data for /usr into /
+            for d in lib_paths, lib32_paths, lib64_paths:
+                d[self.eprefix].update(d[usr_prefix])
+                del d[usr_prefix]
+            # delete the prefix to avoid duplicate actions
+            del subprefixes[1]
+
+        self.prefixes = subprefixes
         self.excludes = {}
         self.includes = {}
 
