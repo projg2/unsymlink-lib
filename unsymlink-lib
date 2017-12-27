@@ -452,6 +452,8 @@ def main():
                       const='finish', help='Finish the migration (clean up)')
     argp.add_argument('-p', '--pretend', action='store_true',
                       help='Do not modify the system, only print what would happen')
+    argp.add_argument('-P', '--prefix',
+                      help='Migrate only the specified prefix directory (EXPERT)')
     argp.add_argument('--root', default='/',
                       help='Run on specified alternate system root')
     args = argp.parse_args()
@@ -465,27 +467,32 @@ def main():
             print('[Running as unprivileged user, results will not be saved]',
                   file=sys.stderr)
 
-    # helpful consts
     top_dir = args.root
-    usr_dir = os.path.join(top_dir, 'usr')
-    lib64_dir = os.path.join(top_dir, 'lib64')
-    usr_lib64_dir = os.path.join(usr_dir, 'lib64')
 
-    # if /lib64 and /usr/lib64 are the same directory, we'll dealing
-    # with /usr merge most likely
-    if os.path.samefile(lib64_dir, usr_lib64_dir):
-        usr_merge = True
-        # use whichever prefix has the real directories
-        if not os.path.islink(lib64_dir):
-            prefixes = [top_dir]
-        else:
-            prefixes = [usr_dir]
-    else:
+    if args.prefix:
         usr_merge = False
-        prefixes = [top_dir, usr_dir]
+        prefixes = [args.prefix]
+    else:
+        # helpful consts
+        usr_dir = os.path.join(top_dir, 'usr')
+        lib64_dir = os.path.join(top_dir, 'lib64')
+        usr_lib64_dir = os.path.join(usr_dir, 'lib64')
 
-    # add /usr/local too
-    prefixes.append(os.path.join(usr_dir, 'local'))
+        # if /lib64 and /usr/lib64 are the same directory, we're dealing
+        # with /usr merge most likely
+        if os.path.samefile(lib64_dir, usr_lib64_dir):
+            usr_merge = True
+            # use whichever prefix has the real directories
+            if not os.path.islink(lib64_dir):
+                prefixes = [top_dir]
+            else:
+                prefixes = [usr_dir]
+        else:
+            usr_merge = False
+            prefixes = [top_dir, usr_dir]
+
+        # add /usr/local too
+        prefixes.append(os.path.join(usr_dir, 'local'))
 
     if args.action == 'analyze':
         for p in prefixes:
