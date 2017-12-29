@@ -290,86 +290,132 @@ class MigrationState(object):
                 print('\t%s' % (p,), file=sys.stderr)
 
     def migrate(self, pretend):
-        # create the lib.new directories
-        for prefix in self.prefixes:
-            lib = os.path.join(prefix, 'lib')
-            lib32 = os.path.join(prefix, 'lib32')
-            lib_new = os.path.join(prefix, 'lib.new')
+        try:
+            # create the lib.new directories
+            for prefix in self.prefixes:
+                lib = os.path.join(prefix, 'lib')
+                lib32 = os.path.join(prefix, 'lib32')
+                lib_new = os.path.join(prefix, 'lib.new')
 
-            if pretend:
-                print('mkdir %s' % lib_new)
-            else:
-                os.mkdir(lib_new)
-
-            if not pretend:
-                print('[%s] & %s -> %s ...' % (lib32, lib, lib_new), file=sys.stderr)
-            cmd = ['cp', '-a', '--reflink=auto', '--']
-            if os.path.isdir(lib32):
-                cmd.append(os.path.join(lib32, '.'))
-            # include all appropriate pure&mixed lib stuff
-            for p in self.includes[prefix]:
-                assert not p.endswith('/')
-                cmd.append(os.path.join(lib, p))
-            cmd.append(lib_new + '/')
-
-            if len(cmd) > 5:
                 if pretend:
-                    print(' '.join(cmd))
+                    print('mkdir %s' % lib_new)
                 else:
-                    p = subprocess.Popen(cmd)
-                    if p.wait() != 0:
-                        print('Non-successful return from cp: %d' % (p.returncode,), file=sys.stderr)
-                        raise SystemExit(1)
+                    os.mkdir(lib_new)
 
-            if self.excludes[prefix]:
                 if not pretend:
-                    print('Remove extraneous files from %s ...' % (lib_new,), file=sys.stderr)
-                # remove excluded stuff
-                for p in self.excludes[prefix]:
-                    fp = os.path.join(lib_new, p)
+                    print('[%s] & %s -> %s ...' % (lib32, lib, lib_new), file=sys.stderr)
+                cmd = ['cp', '-a', '--reflink=auto', '--']
+                if os.path.isdir(lib32):
+                    cmd.append(os.path.join(lib32, '.'))
+                # include all appropriate pure&mixed lib stuff
+                for p in self.includes[prefix]:
+                    assert not p.endswith('/')
+                    cmd.append(os.path.join(lib, p))
+                cmd.append(lib_new + '/')
+
+                if len(cmd) > 5:
                     if pretend:
-                        print('rm %s' % fp)
-                        print('rmdir -p --ignore-fail-on-non-empty %s'
-                              % os.path.dirname(fp))
+                        print(' '.join(cmd))
                     else:
-                        os.unlink(fp)
+                        p = subprocess.Popen(cmd)
+                        if p.wait() != 0:
+                            print('Non-successful return from cp: %d' % (p.returncode,), file=sys.stderr)
+                            raise SystemExit(1)
 
-                        try:
-                            os.removedirs(os.path.dirname(fp))
-                        except OSError as e:
-                            if e.errno not in (errno.ENOTEMPTY, errno.EEXIST):
-                                raise
+                if self.excludes[prefix]:
+                    if not pretend:
+                        print('Remove extraneous files from %s ...' % (lib_new,), file=sys.stderr)
+                    # remove excluded stuff
+                    for p in self.excludes[prefix]:
+                        fp = os.path.join(lib_new, p)
+                        if pretend:
+                            print('rm %s' % fp)
+                            print('rmdir -p --ignore-fail-on-non-empty %s'
+                                  % os.path.dirname(fp))
+                        else:
+                            os.unlink(fp)
 
-        for prefix in self.prefixes:
-            lib = os.path.join(prefix, 'lib')
-            lib_tmp = os.path.join(prefix, 'lib.tmp')
-            if pretend:
-                print('ln -s -f -T lib.new %s' % lib)
-            else:
-                print('Updating: %s -> lib.new ...' % (lib,), file=sys.stderr)
-                os.symlink('lib.new', lib_tmp)
-                os.rename(lib_tmp, lib)
+                            try:
+                                os.removedirs(os.path.dirname(fp))
+                            except OSError as e:
+                                if e.errno not in (errno.ENOTEMPTY, errno.EEXIST):
+                                    raise
+        except:
+            print('', file=sys.stderr)
+            print('An error occurred while creating the "lib.new" directories. Please look', file=sys.stderr)
+            print('at the backtrace following this message for details. The partially', file=sys.stderr)
+            print('created "lib.new" directories were left in case they were useful', file=sys.stderr)
+            print('for determining the cause of the error.', file=sys.stderr)
+            print('', file=sys.stderr)
+            print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
+            print('please use the --force-rollback action to reset your system.', file=sys.stderr)
+            print('', file=sys.stderr)
+            raise
+
+        try:
+            for prefix in self.prefixes:
+                lib = os.path.join(prefix, 'lib')
+                lib_tmp = os.path.join(prefix, 'lib.tmp')
+                if pretend:
+                    print('ln -s -f -T lib.new %s' % lib)
+                else:
+                    print('Updating: %s -> lib.new ...' % (lib,), file=sys.stderr)
+                    os.symlink('lib.new', lib_tmp)
+                    os.rename(lib_tmp, lib)
+        except:
+            print('', file=sys.stderr)
+            print('An error occurred while updating the "lib" symlinks. Please look', file=sys.stderr)
+            print('at the backtrace following this message for details. The "lib.new"', file=sys.stderr)
+            print('directories are complete now but the "lib" symlinks were not updated', file=sys.stderr)
+            print('completely.', file=sys.stderr)
+            print('', file=sys.stderr)
+            print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
+            print('please use the --force-rollback action to reset your system.', file=sys.stderr)
+            print('', file=sys.stderr)
+            raise
 
     def rollback(self, pretend):
-        # restore the old 'lib' symlink
-        for prefix in self.prefixes:
-            lib = os.path.join(prefix, 'lib')
-            lib_tmp = os.path.join(prefix, 'lib.tmp')
-            if pretend:
-                print('ln -s -f -T lib64 %s' % lib)
-            else:
-                print('Updating: %s -> lib64 ...' % (lib,), file=sys.stderr)
-                os.symlink('lib64', lib_tmp)
-                os.rename(lib_tmp, lib)
+        try:
+            # restore the old 'lib' symlink
+            for prefix in self.prefixes:
+                lib = os.path.join(prefix, 'lib')
+                lib_tmp = os.path.join(prefix, 'lib.tmp')
+                if pretend:
+                    print('ln -s -f -T lib64 %s' % lib)
+                else:
+                    print('Updating: %s -> lib64 ...' % (lib,), file=sys.stderr)
+                    os.symlink('lib64', lib_tmp)
+                    os.rename(lib_tmp, lib)
+        except:
+            print('', file=sys.stderr)
+            print('An error occurred while restoring the "lib" symlinks. Please look', file=sys.stderr)
+            print('at the backtrace following this message for details.', file=sys.stderr)
+            print('', file=sys.stderr)
+            print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
+            print('please use the --force-rollback action to reset your system.', file=sys.stderr)
+            print('', file=sys.stderr)
+            raise
 
         # clean up lib.new
+        rm_failed = False
         for prefix in self.prefixes:
             lib_new = os.path.join(prefix, 'lib.new')
             if pretend:
                 print('rm -rf -- %s' % lib_new)
             else:
                 print('Removing: %s ...' % (lib_new,))
-                subprocess.Popen(['rm', '-rf', '--', lib_new]).wait()
+                p = subprocess.Popen(['rm', '-rf', '--', lib_new])
+                if p.wait() != 0:
+                    rm_failed = True
+
+        if rm_failed:
+            print('', file=sys.stderr)
+            print('An error occurred while cleaning up the "lib.new" directories.', file=sys.stderr)
+            print('This message should be preceded by error messages from the "rm"', file=sys.stderr)
+            print('utility.')
+            print('', file=sys.stderr)
+            print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
+            print('please use the --force-rollback action to reset your system.', file=sys.stderr)
 
     def finish(self, pretend):
         # replace the 'lib' symlink with the directory
