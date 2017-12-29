@@ -589,7 +589,8 @@ def main():
         if not m.load_state():
             print('State file could not be loaded. Did you run --analyze?', file=sys.stderr)
             return 1
-        print('Those are the actions that would be performed:', file=sys.stderr)
+        if args.pretend:
+            print('Those are the actions that would be performed:', file=sys.stderr)
         m.migrate(pretend=args.pretend)
         if not args.pretend:
             print('', file=sys.stderr)
@@ -611,7 +612,8 @@ def main():
         if not m.load_state():
             print('State file could not be loaded. Did you run --analyze?', file=sys.stderr)
             return 1
-        print('Those are the actions that would be performed:', file=sys.stderr)
+        if args.pretend:
+            print('Those are the actions that would be performed:', file=sys.stderr)
         m.rollback(pretend=args.pretend)
         if not args.pretend:
             m.clear_state()
@@ -626,7 +628,8 @@ def main():
         if not m.load_state():
             print('State file could not be loaded. Did you run --analyze?', file=sys.stderr)
             return 1
-        print('Those are the actions that would be performed:', file=sys.stderr)
+        if args.pretend:
+            print('Those are the actions that would be performed:', file=sys.stderr)
         m.finish(pretend=args.pretend)
         if not args.pretend:
             m.clear_state()
