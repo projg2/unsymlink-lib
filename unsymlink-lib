@@ -466,6 +466,10 @@ def main():
                    const='rollback', help='Revert the migration (after --migrate)')
     g.add_argument('--finish', action='store_const', dest='action',
                    const='finish', help='Finish the migration (clean up)')
+    g = argp.add_argument_group('recovery actions (NO SAFETY!)')
+    g.add_argument('--force-rollback', action='store_const', dest='action',
+                   const='rollback_force',
+                   help='Force resetting "lib" symlink and removing "lib.new"')
     g = argp.add_argument_group('expert options')
     g.add_argument('-P', '--prefix',
                    help='Migrate only the specified prefix directory (EXPERT)')
@@ -552,9 +556,10 @@ def main():
             print('If you wish to revert the changes, run:', file=sys.stderr)
             print('', file=sys.stderr)
             print('\t%s --rollback' % (sys.argv[0],), file=sys.stderr)
-    elif args.action == 'rollback':
-        for p in prefixes:
-            verify_migrated(p)
+    elif args.action.startswith('rollback'):
+        if not args.action.endswith('force'):
+            for p in prefixes:
+                verify_migrated(p)
 
         m = MigrationState(top_dir)
         if not m.load_state():
