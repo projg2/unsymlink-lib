@@ -108,6 +108,8 @@ def nonfatal_remove(fp):
                 if e.errno not in (errno.EEXIST, errno.ENOTEMPTY):
                     print('Removing %s failed: %s' % (fp, e), file=sys.stderr)
                     return False
+        elif e.errno == errno.ENOENT:
+            pass
         else:
             print('Removing %s failed: %s' % (fp, e), file=sys.stderr)
             return False
