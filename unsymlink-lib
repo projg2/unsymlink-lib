@@ -417,22 +417,31 @@ class MigrationState(object):
             print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
             print('please use the --force-rollback action to reset your system.', file=sys.stderr)
 
-    def finish(self, pretend):
+    def finish(self, pretend, resume):
         # replace the 'lib' symlink with the directory
         for prefix in self.prefixes:
             lib = os.path.join(prefix, 'lib')
             lib_new = os.path.join(prefix, 'lib.new')
+            # if lib.new does not exist, it has probably been moved already
+            if resume and not os.path.isdir(lib_new):
+                continue
             if pretend:
                 print('mv -f -T %s %s' % (lib_new, lib))
             else:
                 print('Renaming %s -> %s ...' % (lib_new, lib), file=sys.stderr)
-                os.unlink(lib)
+                # when resuming, 'lib' may have already been unlinked
+                # (otherwise, it must exist at this point)
+                if not resume or os.path.islink(lib):
+                    os.unlink(lib)
                 os.rename(lib_new, lib)
 
         # replace 'lib32' with a symlink
         for prefix in self.prefixes:
             lib32 = os.path.join(prefix, 'lib32')
             if os.path.isdir(lib32):
+                # if resuming, it can be a symlink already
+                if resume and os.path.islink(lib32):
+                    continue
                 if pretend:
                     print('rm -rf -- %s' % lib32)
                     print('ln -s lib %s' % lib32)
@@ -516,6 +525,9 @@ def main():
     g.add_argument('--force-rollback', action='store_const', dest='action',
                    const='rollback_force',
                    help='Force resetting "lib" symlink and removing "lib.new"')
+    g.add_argument('--resume-finish', action='store_const', dest='action',
+                   const='finish_resume',
+                   help='Attempt resuming failed --finish action')
     g = argp.add_argument_group('expert options')
     g.add_argument('-P', '--prefix',
                    help='Migrate only the specified prefix directory (EXPERT)')
@@ -620,9 +632,10 @@ def main():
             print('', file=sys.stderr)
             print('Rollback complete. Your system should now be as before the migration.', file=sys.stderr)
             print('Please look into fixing your issues and try again.', file=sys.stderr)
-    elif args.action == 'finish':
-        for p in prefixes:
-            verify_migrated(p)
+    elif args.action.startswith('finish'):
+        if not args.action.endswith('resume'):
+            for p in prefixes:
+                verify_migrated(p)
 
         m = MigrationState(top_dir)
         if not m.load_state():
@@ -630,7 +643,7 @@ def main():
             return 1
         if args.pretend:
             print('Those are the actions that would be performed:', file=sys.stderr)
-        m.finish(pretend=args.pretend)
+        m.finish(pretend=args.pretend, resume=args.action.endswith('resume'))
         if not args.pretend:
             m.clear_state()
             print('', file=sys.stderr)
