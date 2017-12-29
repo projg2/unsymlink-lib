@@ -148,6 +148,7 @@ class MigrationState(object):
 
         trees = create_trees(config_root=self.eroot)
         vardb = trees[max(trees)]['vartree'].dbapi
+        missing_files = set()
         for p in vardb.cpv_all():
             for f, details in vardb._dblink(p).getcontents().items():
                 # skip directories; we will get them implicitly via
@@ -161,7 +162,10 @@ class MigrationState(object):
                             (lib32_path[prefix], lib32_paths[prefix]),
                             (lib64_path[prefix], lib64_paths[prefix])):
                         if f.startswith(libdir):
-                            dest.add(f[len(libdir):])
+                            if not os.path.exists(f):
+                                missing_files.add(f)
+                            else:
+                                dest.add(f[len(libdir):])
                             break
 
         pure_lib = {}
@@ -275,6 +279,15 @@ class MigrationState(object):
             print('', file=sys.stderr)
             print('Warning: no lib32 paths found. This is fine if you are running no-multilib,', file=sys.stderr)
             print('otherwise this is suspicious.', file=sys.stderr)
+
+        if missing_files:
+            print('', file=sys.stderr)
+            print('One or more package files are missing from the system. This should not', file=sys.stderr)
+            print('cause any problems but you may want to reinstall the packages', file=sys.stderr)
+            print('that installed them. The missing files are:', file=sys.stderr)
+            print('', file=sys.stderr)
+            for p in sorted(missing_files):
+                print('\t%s' % (p,), file=sys.stderr)
 
     def migrate(self, pretend):
         # create the lib.new directories
