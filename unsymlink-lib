@@ -452,21 +452,23 @@ class MigrationState(object):
 
 def main():
     argp = argparse.ArgumentParser()
-    argp.add_argument('--analyze', action='store_const', dest='action',
-                      const='analyze', help='Analyze and store system state',
-                      default='analyze')
-    argp.add_argument('--migrate', action='store_const', dest='action',
-                      const='migrate', help='Perform the migration')
-    argp.add_argument('--rollback', action='store_const', dest='action',
-                      const='rollback', help='Revert the migration (after --migrate)')
-    argp.add_argument('--finish', action='store_const', dest='action',
-                      const='finish', help='Finish the migration (clean up)')
     argp.add_argument('-p', '--pretend', action='store_true',
                       help='Do not modify the system, only print what would happen')
-    argp.add_argument('-P', '--prefix',
-                      help='Migrate only the specified prefix directory (EXPERT)')
     argp.add_argument('--root', default='/',
                       help='Run on specified alternate system root')
+    g = argp.add_argument_group('basic actions')
+    g.add_argument('--analyze', action='store_const', dest='action',
+                   const='analyze', help='Analyze and store system state',
+                   default='analyze')
+    g.add_argument('--migrate', action='store_const', dest='action',
+                   const='migrate', help='Perform the migration')
+    g.add_argument('--rollback', action='store_const', dest='action',
+                   const='rollback', help='Revert the migration (after --migrate)')
+    g.add_argument('--finish', action='store_const', dest='action',
+                   const='finish', help='Finish the migration (clean up)')
+    g = argp.add_argument_group('expert options')
+    g.add_argument('-P', '--prefix',
+                   help='Migrate only the specified prefix directory (EXPERT)')
     args = argp.parse_args()
 
     is_root = os.geteuid() == 0
