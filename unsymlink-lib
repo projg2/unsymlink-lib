@@ -156,15 +156,13 @@ class MigrationState(object):
                     continue
                 f = os.path.join(self.eroot, f.lstrip('/'))
                 for prefix in subprefixes:
-                    if f.startswith(lib_path[prefix]):
-                        lib_paths[prefix].add(f[len(lib_path[prefix]):])
-                        break
-                    if f.startswith(lib32_path[prefix]):
-                        lib32_paths[prefix].add(f[len(lib32_path[prefix]):])
-                        break
-                    if f.startswith(lib64_path[prefix]):
-                        lib64_paths[prefix].add(f[len(lib64_path[prefix]):])
-                        break
+                    for libdir, dest in (
+                            (lib_path[prefix], lib_paths[prefix]),
+                            (lib32_path[prefix], lib32_paths[prefix]),
+                            (lib64_path[prefix], lib64_paths[prefix])):
+                        if f.startswith(libdir):
+                            dest.add(f[len(libdir):])
+                            break
 
         pure_lib = {}
         mixed_lib = {}
