@@ -538,6 +538,7 @@ def main():
         m = MigrationState(top_dir)
         if not m.load_state():
             print('State file could not be loaded. Did you run --analyze?', file=sys.stderr)
+            return 1
         print('Those are the actions that would be performed:', file=sys.stderr)
         m.migrate(pretend=args.pretend)
         if not args.pretend:
@@ -558,6 +559,7 @@ def main():
         m = MigrationState(top_dir)
         if not m.load_state():
             print('State file could not be loaded. Did you run --analyze?', file=sys.stderr)
+            return 1
         print('Those are the actions that would be performed:', file=sys.stderr)
         m.rollback(pretend=args.pretend)
         if not args.pretend:
@@ -572,6 +574,7 @@ def main():
         m = MigrationState(top_dir)
         if not m.load_state():
             print('State file could not be loaded. Did you run --analyze?', file=sys.stderr)
+            return 1
         print('Those are the actions that would be performed:', file=sys.stderr)
         m.finish(pretend=args.pretend)
         if not args.pretend:
