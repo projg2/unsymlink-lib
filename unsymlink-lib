@@ -106,9 +106,12 @@ def nonfatal_remove(fp):
                 os.rmdir(fp)
             except OSError as e:
                 if e.errno not in (errno.EEXIST, errno.ENOTEMPTY):
-                    print('Removing %s failed: %s' % (fp, e))
+                    print('Removing %s failed: %s' % (fp, e), file=sys.stderr)
+                    return False
         else:
-            print('Removing %s failed: %s' % (fp, e))
+            print('Removing %s failed: %s' % (fp, e), file=sys.stderr)
+            return False
+    return True
 
 
 def is_lib64_candidate(path):
@@ -418,46 +421,67 @@ class MigrationState(object):
             print('please use the --force-rollback action to reset your system.', file=sys.stderr)
 
     def finish(self, pretend, resume):
-        # replace the 'lib' symlink with the directory
-        for prefix in self.prefixes:
-            lib = os.path.join(prefix, 'lib')
-            lib_new = os.path.join(prefix, 'lib.new')
-            # if lib.new does not exist, it has probably been moved already
-            if resume and not os.path.isdir(lib_new):
-                continue
-            if pretend:
-                print('mv -f -T %s %s' % (lib_new, lib))
-            else:
-                print('Renaming %s -> %s ...' % (lib_new, lib), file=sys.stderr)
-                # when resuming, 'lib' may have already been unlinked
-                # (otherwise, it must exist at this point)
-                if not resume or os.path.islink(lib):
-                    os.unlink(lib)
-                os.rename(lib_new, lib)
-
-        # replace 'lib32' with a symlink
-        for prefix in self.prefixes:
-            lib32 = os.path.join(prefix, 'lib32')
-            if os.path.isdir(lib32):
-                # if resuming, it can be a symlink already
-                if resume and os.path.islink(lib32):
+        try:
+            # replace the 'lib' symlink with the directory
+            for prefix in self.prefixes:
+                lib = os.path.join(prefix, 'lib')
+                lib_new = os.path.join(prefix, 'lib.new')
+                # if lib.new does not exist, it has probably been moved already
+                if resume and not os.path.isdir(lib_new):
                     continue
                 if pretend:
-                    print('rm -rf -- %s' % lib32)
-                    print('ln -s lib %s' % lib32)
+                    print('mv -f -T %s %s' % (lib_new, lib))
                 else:
-                    print('Removing: %s ...' % (lib32,), file=sys.stderr)
-                    if subprocess.Popen(['rm', '-rf', '--', lib32]).wait() != 0:
-                        print('Removal failed for %s, you need to remove it manually and replace', file=sys.stderr)
-                        print('with a symlink to lib.', file=sys.stderr)
+                    print('Renaming %s -> %s ...' % (lib_new, lib), file=sys.stderr)
+                    # when resuming, 'lib' may have already been unlinked
+                    # (otherwise, it must exist at this point)
+                    if not resume or os.path.islink(lib):
+                        os.unlink(lib)
+                    os.rename(lib_new, lib)
+        except:
+            print('', file=sys.stderr)
+            print('An error occurred while replacing the "lib" symlinks. Please look', file=sys.stderr)
+            print('at the backtrace following this message for details.', file=sys.stderr)
+            print('', file=sys.stderr)
+            print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
+            print('please use the --resume-finish action.', file=sys.stderr)
+            print('', file=sys.stderr)
+            raise
+
+        try:
+            # replace 'lib32' with a symlink
+            for prefix in self.prefixes:
+                lib32 = os.path.join(prefix, 'lib32')
+                if os.path.isdir(lib32):
+                    # if resuming, it can be a symlink already
+                    if resume and os.path.islink(lib32):
+                        continue
+                    if pretend:
+                        print('rm -rf -- %s' % lib32)
+                        print('ln -s lib %s' % lib32)
                     else:
-                        print('Updating: %s -> lib ...' % (lib32,), file=sys.stderr)
-                        try:
-                            os.symlink('lib', lib32)
-                        except OSError:
-                            print('Symlinking failed for %s, please symlink it manually to lib.', file=sys.stderr)
+                        print('Removing: %s ...' % (lib32,), file=sys.stderr)
+                        if subprocess.Popen(['rm', '-rf', '--', lib32]).wait() != 0:
+                            print('Removal failed for %s, you need to remove it manually and replace', file=sys.stderr)
+                            print('with a symlink to lib.', file=sys.stderr)
+                        else:
+                            print('Updating: %s -> lib ...' % (lib32,), file=sys.stderr)
+                            try:
+                                os.symlink('lib', lib32)
+                            except OSError:
+                                print('Symlinking failed for %s, please symlink it manually to lib.', file=sys.stderr)
+        except:
+            print('', file=sys.stderr)
+            print('An error occurred while replacing the "lib32" directories. Please look', file=sys.stderr)
+            print('at the backtrace following this message for details.', file=sys.stderr)
+            print('', file=sys.stderr)
+            print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
+            print('please use the --resume-finish action.', file=sys.stderr)
+            print('', file=sys.stderr)
+            raise
 
         # clean up extraneous files from 'lib64'
+        rm_failed = False
         for prefix in self.prefixes:
             lib64 = os.path.join(prefix, 'lib64')
             if not pretend:
@@ -471,12 +495,23 @@ class MigrationState(object):
                             if rp not in self.excludes[prefix]:
                                 if pretend:
                                     print('rm -d %s' % fp)
-                                else:
-                                    nonfatal_remove(fp)
+                                elif not nonfatal_remove(fp):
+                                    rm_failed = True
                 if pretend:
                     print('rm -d %s' % os.path.join(lib64, p))
-                else:
-                    nonfatal_remove(os.path.join(lib64, p))
+                elif not nonfatal_remove(os.path.join(lib64, p)):
+                    rm_failed = True
+
+        if rm_failed:
+            print('', file=sys.stderr)
+            print('An error occurred while cleaning up the "lib64" directories.', file=sys.stderr)
+            print('This message should be preceded by more specific error messages', file=sys.stderr)
+            print('(interspersed with progress output).')
+            print('', file=sys.stderr)
+            print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
+            print('please use the --resume-finish action.', file=sys.stderr)
+
+        return not rm_failed
 
     def save_state(self):
         with open(os.path.expanduser('~/.symlink_lib_migrate.state'), 'wb') as f:
@@ -643,9 +678,11 @@ def main():
             return 1
         if args.pretend:
             print('Those are the actions that would be performed:', file=sys.stderr)
-        m.finish(pretend=args.pretend, resume=args.action.endswith('resume'))
+        res = m.finish(pretend=args.pretend, resume=args.action.endswith('resume'))
         if not args.pretend:
-            m.clear_state()
+            # keep state if cleanup failed
+            if res:
+                m.clear_state()
             print('', file=sys.stderr)
             print('Migration complete. Please switch to the new profiles, or add', file=sys.stderr)
             print('the following to your make.conf (or equivalent):', file=sys.stderr)
