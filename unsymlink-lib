@@ -29,10 +29,6 @@ def verify_initial(prefix):
         print('%s is a symlink! was the migration done already?' % (lib32,), file=sys.stderr)
         raise SystemExit(1)
 
-    if os.path.ismount(lib32):
-        print('%s is a mountpoint! this is not supported currently.' % (lib32,), file=sys.stderr)
-        raise SystemExit(1)
-
     if os.path.isdir(lib) and not os.path.islink(lib):
         print('%s is a real directory! was the migration done already?' % (lib,), file=sys.stderr)
         raise SystemExit(1)
@@ -66,10 +62,6 @@ def verify_migrated(prefix):
 
     if os.path.islink(lib32):
         print('%s is a symlink! was the migration finished already?' % (lib32,), file=sys.stderr)
-        raise SystemExit(1)
-
-    if os.path.ismount(lib32):
-        print('%s is a mountpoint! this is not supported currently.' % (lib32,), file=sys.stderr)
         raise SystemExit(1)
 
     if os.path.isdir(lib) and not os.path.islink(lib):
