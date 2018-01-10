@@ -505,6 +505,11 @@ class MigrationState(object):
                     else:
                         print('Removing: %s ...' % (lib32,), file=sys.stderr)
                         if subprocess.Popen(['rm', '-rf', '--', lib32]).wait() != 0:
+                            if os.path.ismount(lib32):
+                                print('', file=sys.stderr)
+                                print('Note: lib32 looks like a mount point. If all files inside it were removed', file=sys.stderr)
+                                print('successfully, you need to unmount it to let the program replace it with', file=sys.stderr)
+                                print('a symlink. You can remove or reuse the backing device afterwards.', file=sys.stderr)
                             raise SystemExit(1)
                         else:
                             print('Updating: %s -> lib ...' % (lib32,), file=sys.stderr)
