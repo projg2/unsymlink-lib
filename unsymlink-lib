@@ -196,20 +196,6 @@ class MigrationState(object):
         self.excludes = {}
         self.includes = {}
 
-        # check for mountpoints, they are trouble
-        mountpoints = set()
-        for prefix in real_prefixes:
-            for topdir in (lib64_path[prefix], lib32_path[prefix]):
-                if not os.path.isdir(topdir):
-                    continue
-                for dirpath, dirnames, _ in os.walk(topdir):
-                    for d in list(dirnames):
-                        dp = os.path.join(dirpath, d)
-                        if os.path.ismount(dp):
-                            mountpoints.add(dp)
-                            # do not process filesystems recursively
-                            dirnames.remove(d)
-
         for prefix in real_prefixes:
             print('', file=sys.stderr)
             lib_paths[prefix] = frozenset(lib_paths[prefix])
@@ -308,11 +294,41 @@ class MigrationState(object):
             for p in sorted(missing_files):
                 print('\t%s' % (p,), file=sys.stderr)
 
-        if mountpoints:
+        # check for mountpoints, they are trouble
+        mountpoints_staying = set()
+        mountpoints_moved = set()
+        for prefix in real_prefixes:
+            for topdir in (lib64_path[prefix], lib32_path[prefix]):
+                if not os.path.isdir(topdir):
+                    continue
+                for dirpath, dirnames, _ in os.walk(topdir):
+                    for d in list(dirnames):
+                        dp = os.path.join(dirpath, d)
+                        if os.path.ismount(dp):
+                            for x in self.includes[prefix]:
+                                if path_starts_with(os.path.relpath(dp, topdir), x):
+                                    mountpoints_moved.add(dp)
+                                    break
+                            else:
+                                mountpoints_staying.add(dp)
+                            # do not process filesystems recursively
+                            dirnames.remove(d)
+
+        if mountpoints_staying:
             print('', file=sys.stderr)
-            print('One or more mount points (or subvolumes) found inside the libdirs:', file=sys.stderr)
+            print('One or more mount points (or subvolumes) detected:', file=sys.stderr)
             print('', file=sys.stderr)
-            for p in sorted(mountpoints):
+            for p in sorted(mountpoints_staying):
+                print('\t%s' % (p,), file=sys.stderr)
+            print('', file=sys.stderr)
+            print('Those directories do not need to be migrated. However, please make sure', file=sys.stderr)
+            print('that fstab is using correct (real) paths to them.', file=sys.stderr)
+
+        if mountpoints_moved:
+            print('', file=sys.stderr)
+            print('One or more mount points (or subvolumes) need to be migrated:', file=sys.stderr)
+            print('', file=sys.stderr)
+            for p in sorted(mountpoints_moved):
                 print('\t%s' % (p,), file=sys.stderr)
             print('', file=sys.stderr)
             print('This script does not support migrating mount points at the moment. You can', file=sys.stderr)
@@ -320,14 +336,11 @@ class MigrationState(object):
             print('directory. In the former case, please compare the list of mount points', file=sys.stderr)
             print('against the planned moves printed above.', file=sys.stderr)
             print('', file=sys.stderr)
-            print('1. If the mount point belongs to pure lib64, it does not have to be moved', file=sys.stderr)
-            print('but you may need to update fstab to ensure that it is mounted via lib64.', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('2. If the mount point belongs to pure lib, it needs to be moved. The script', file=sys.stderr)
+            print('1. If the mount point belongs to pure lib, it needs to be moved. The script', file=sys.stderr)
             print('will create an empty directory for it and you will need to remount it', file=sys.stderr)
             print('manually (or copy, in case of btrfs subvolume) and update fstab.', file=sys.stderr)
             print('', file=sys.stderr)
-            print('3. If the mount point belongs to mixed lib+lib64, this scenario is currently', file=sys.stderr)
+            print('2. If the mount point belongs to mixed lib+lib64, this scenario is currently', file=sys.stderr)
             print('unsupported and fully manual migration is necessary.', file=sys.stderr)
             print('', file=sys.stderr)
             print('Once you are ready to proceed, please unmount the filesystems and run', file=sys.stderr)
