@@ -576,8 +576,7 @@ class MigrationState(object):
             print('', file=sys.stderr)
             print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
             print('please use the --resume-finish action.', file=sys.stderr)
-
-        return not rm_failed
+            raise SystemExit(1)
 
     def save_state(self):
         with open(os.path.expanduser('~/.symlink_lib_migrate.state'), 'wb') as f:
@@ -748,11 +747,9 @@ def main():
             return 1
         if args.pretend:
             print('Those are the actions that would be performed:', file=sys.stderr)
-        res = m.finish(pretend=args.pretend, resume=args.action.endswith('resume'))
+        m.finish(pretend=args.pretend, resume=args.action.endswith('resume'))
         if not args.pretend:
-            # keep state if cleanup failed
-            if res:
-                m.clear_state()
+            m.clear_state()
             print('', file=sys.stderr)
             print('', file=sys.stderr)
             print('Migration complete. Please switch to the new profiles, or add', file=sys.stderr)
