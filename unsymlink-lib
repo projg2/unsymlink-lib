@@ -513,8 +513,7 @@ class MigrationState(object):
                     else:
                         print('Removing: %s ...' % (lib32,), file=sys.stderr)
                         if subprocess.Popen(['rm', '-rf', '--', lib32]).wait() != 0:
-                            print('Removal failed for %s, you need to remove it manually and replace', file=sys.stderr)
-                            print('with a symlink to lib.', file=sys.stderr)
+                            raise SystemExit(1)
                         else:
                             print('Updating: %s -> lib ...' % (lib32,), file=sys.stderr)
                             try:
