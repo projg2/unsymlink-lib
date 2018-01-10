@@ -256,6 +256,7 @@ class MigrationState(object):
             conflicts = lib_paths[prefix] & lib32_paths[prefix]
             if conflicts:
                 print('', file=sys.stderr)
+                print('', file=sys.stderr)
                 print('One or more files are both in %s&%s, making the conversion impossible.' % (
                     lib_path[prefix], lib32_path[prefix]), file=sys.stderr)
                 print('', file=sys.stderr)
@@ -268,6 +269,7 @@ class MigrationState(object):
 
             conflicts = lib_paths[prefix] & lib64_paths[prefix]
             if conflicts:
+                print('', file=sys.stderr)
                 print('', file=sys.stderr)
                 print('One or more files are both in %s&%s, making the conversion impossible.' % (
                     lib_path[prefix], lib64_path[prefix]), file=sys.stderr)
@@ -282,10 +284,12 @@ class MigrationState(object):
         self.has_lib32 = any(lib32_paths.values())
         if not self.has_lib32:
             print('', file=sys.stderr)
+            print('', file=sys.stderr)
             print('Warning: no lib32 paths found. This is fine if you are running no-multilib,', file=sys.stderr)
             print('otherwise this is suspicious.', file=sys.stderr)
 
         if missing_files:
+            print('', file=sys.stderr)
             print('', file=sys.stderr)
             print('One or more package files are missing from the system. This should not', file=sys.stderr)
             print('cause any problems but you may want to reinstall the packages', file=sys.stderr)
@@ -316,6 +320,7 @@ class MigrationState(object):
 
         if mountpoints_staying:
             print('', file=sys.stderr)
+            print('', file=sys.stderr)
             print('One or more mount points (or subvolumes) detected:', file=sys.stderr)
             print('', file=sys.stderr)
             for p in sorted(mountpoints_staying):
@@ -325,6 +330,7 @@ class MigrationState(object):
             print('that fstab is using correct (real) paths to them.', file=sys.stderr)
 
         if mountpoints_moved:
+            print('', file=sys.stderr)
             print('', file=sys.stderr)
             print('One or more mount points (or subvolumes) need to be migrated:', file=sys.stderr)
             print('', file=sys.stderr)
@@ -677,6 +683,7 @@ def main():
         if is_root:
             m.save_state()
             print('', file=sys.stderr)
+            print('', file=sys.stderr)
             print('The state has been saved and the migration is ready to proceed.', file=sys.stderr)
             print('To initiate it, please run:', file=sys.stderr)
             print('', file=sys.stderr)
@@ -685,6 +692,7 @@ def main():
             print('Please do not perform any changes to the system at this point.', file=sys.stderr)
             print('If you performed any changes, please rerun the analysis.', file=sys.stderr)
         else:
+            print('', file=sys.stderr)
             print('', file=sys.stderr)
             print('Everything looks good from here. However, you need to rerun', file=sys.stderr)
             print('the process as root to confirm.', file=sys.stderr)
@@ -700,6 +708,7 @@ def main():
             print('Those are the actions that would be performed:', file=sys.stderr)
         m.migrate(pretend=args.pretend)
         if not args.pretend:
+            print('', file=sys.stderr)
             print('', file=sys.stderr)
             print('Initial migration complete. Please now test whether your system works', file=sys.stderr)
             print('correctly. It might be a good idea to try rebooting it. Once tested,', file=sys.stderr)
@@ -725,6 +734,7 @@ def main():
         if not args.pretend:
             m.clear_state()
             print('', file=sys.stderr)
+            print('', file=sys.stderr)
             print('Rollback complete. Your system should now be as before the migration.', file=sys.stderr)
             print('Please look into fixing your issues and try again.', file=sys.stderr)
     elif args.action.startswith('finish'):
@@ -743,6 +753,7 @@ def main():
             # keep state if cleanup failed
             if res:
                 m.clear_state()
+            print('', file=sys.stderr)
             print('', file=sys.stderr)
             print('Migration complete. Please switch to the new profiles, or add', file=sys.stderr)
             print('the following to your make.conf (or equivalent):', file=sys.stderr)
