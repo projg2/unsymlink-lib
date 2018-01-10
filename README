@@ -113,12 +113,10 @@ there is an older state file around, it will not be removed).
 
 2. Any failures during 'lib.new' creation (migration phase) result
 in aborted migration with no damage to the live system. The 'lib.new'
-directory is left for debugging purposes and needs to be removed
-manually to restart the migration.
+directory is left for debugging purposes. It can be cleaned up via
+the '--force-rollback' action.
 
-3. A failure during 'lib' symlink update (migration, post-migration
-cleanup, rollback) is fatal, and requires manual action.
-
-4. Any failures during post-migration or rollback directory cleanup
-are ignored. They result in extraneous files left in the system
-that need to be removed manually.
+3. A failure during the actual migration, post-migration cleanup
+or rollback is fatal, and requires manual action. Depending
+on the exact stage, '--force-rollback' or '--resume-finish' actions
+are provided for recovery.
