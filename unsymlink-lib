@@ -218,25 +218,25 @@ class MigrationState(object):
                                       if is_lib64_candidate(x))
             lib_unowned = unowned_files - lib64_unowned
 
-            print('pure %s:' % (lib_path[prefix],), file=sys.stderr)
+            print('directories that will be moved to %s:' % (lib_path[prefix],), file=sys.stderr)
             for p in pure_lib:
                 print('\t%s' % (p,), file=sys.stderr)
             print('\t(+ %d files)' % (len(lib_files),), file=sys.stderr)
             print('', file=sys.stderr)
 
-            print('split %s+%s:' % (lib_path[prefix], lib64_path[prefix]), file=sys.stderr)
+            print('directories whose contents will be split between %s and %s:' % (lib_path[prefix], lib64_path[prefix]), file=sys.stderr)
             for p in mixed_lib:
                 print('\t%s' % (p,), file=sys.stderr)
 
             if lib_unowned:
                 print('', file=sys.stderr)
-                print('unowned files for %s:' % (lib_path[prefix],), file=sys.stderr)
+                print('orphan files (not owned by any package) that will be moved to %s:' % (lib_path[prefix],), file=sys.stderr)
                 for p in lib_unowned:
                     print('\t%s' % (p,), file=sys.stderr)
 
             if lib64_unowned:
                 print('', file=sys.stderr)
-                print('unowned files for %s:' % (lib64_path[prefix],), file=sys.stderr)
+                print('orphan files (not owned by any package) that will be kept in %s:' % (lib64_path[prefix],), file=sys.stderr)
                 for p in lib64_unowned:
                     print('\t%s' % (p,), file=sys.stderr)
 
@@ -257,7 +257,7 @@ class MigrationState(object):
             if conflicts:
                 print('', file=sys.stderr)
                 print('', file=sys.stderr)
-                print('One or more files are both in %s&%s, making the conversion impossible.' % (
+                print('One or more files are both in %s and %s, making the conversion impossible.' % (
                     lib_path[prefix], lib32_path[prefix]), file=sys.stderr)
                 print('', file=sys.stderr)
                 for p in sorted(conflicts):
@@ -271,7 +271,7 @@ class MigrationState(object):
             if conflicts:
                 print('', file=sys.stderr)
                 print('', file=sys.stderr)
-                print('One or more files are both in %s&%s, making the conversion impossible.' % (
+                print('One or more files are both in %s and %s, making the conversion impossible.' % (
                     lib_path[prefix], lib64_path[prefix]), file=sys.stderr)
                 print('', file=sys.stderr)
                 for p in sorted(conflicts):
