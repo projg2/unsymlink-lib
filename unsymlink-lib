@@ -117,7 +117,7 @@ def nonfatal_remove(fp):
 
 
 def is_lib64_candidate(path):
-    if os.path.splitext(path)[1] in ('.a', '.la', '.so'):
+    if os.path.splitext(path)[1] in ('.a', '.chk', '.la', '.so'):
         return True
     if '.so.' in path:
         return True
