@@ -13,7 +13,7 @@ import sys
 
 def verify_initial(prefix):
     if not os.path.isdir(prefix):
-        print('%s does not exist! wtf?!' % (prefix,))
+        print('{} does not exist! wtf?!'.format(prefix))
         raise SystemExit(1)
 
     lib64 = os.path.join(prefix, 'lib64')
@@ -22,33 +22,33 @@ def verify_initial(prefix):
     lib_new = os.path.join(prefix, 'lib.new')
 
     if not os.path.isdir(lib64) and not os.path.islink(lib64):
-        print('%s needs to exist as a real directory!' % (lib64,), file=sys.stderr)
+        print('{} needs to exist as a real directory!'.format(lib64), file=sys.stderr)
         raise SystemExit(1)
 
     if os.path.islink(lib32):
-        print('%s is a symlink! was the migration done already?' % (lib32,), file=sys.stderr)
+        print('{} is a symlink! was the migration done already?'.format(lib32), file=sys.stderr)
         raise SystemExit(1)
 
     if os.path.isdir(lib) and not os.path.islink(lib):
-        print('%s is a real directory! was the migration done already?' % (lib,), file=sys.stderr)
+        print('{} is a real directory! was the migration done already?'.format(lib), file=sys.stderr)
         raise SystemExit(1)
 
     if os.path.islink(lib) and os.readlink(lib) == 'lib.new':
-        print('%s is a symlink to lib.new! did you want to --finish?' % (lib,), file=sys.stderr)
+        print('{} is a symlink to lib.new! did you want to --finish?'.format(lib), file=sys.stderr)
         raise SystemExit(1)
 
     if not os.path.islink(lib) or os.readlink(lib) != 'lib64':
-        print('%s needs to be a symlink to lib64!' % (lib,), file=sys.stderr)
+        print('{} needs to be a symlink to lib64!'.format(lib), file=sys.stderr)
         raise SystemExit(1)
 
     if os.path.isdir(lib_new):
-        print('%s exists! do you need to remove failed migration?' % (lib_new,), file=sys.stderr)
+        print('{} exists! do you need to remove failed migration?'.format(lib_new), file=sys.stderr)
         raise SystemExit(1)
 
 
 def verify_migrated(prefix):
     if not os.path.isdir(prefix):
-        print('%s does not exist! wtf?!' % (prefix,))
+        print('{} does not exist! wtf?!'.format(prefix))
         raise SystemExit(1)
 
     lib64 = os.path.join(prefix, 'lib64')
@@ -57,27 +57,27 @@ def verify_migrated(prefix):
     lib_new = os.path.join(prefix, 'lib.new')
 
     if not os.path.isdir(lib64) and not os.path.islink(lib64):
-        print('%s needs to exist as a real directory!' % (lib64,), file=sys.stderr)
+        print('{} needs to exist as a real directory!'.format(lib64), file=sys.stderr)
         raise SystemExit(1)
 
     if os.path.islink(lib32):
-        print('%s is a symlink! was the migration finished already?' % (lib32,), file=sys.stderr)
+        print('{} is a symlink! was the migration finished already?'.format(lib32), file=sys.stderr)
         raise SystemExit(1)
 
     if os.path.isdir(lib) and not os.path.islink(lib):
-        print('%s is a real directory! was the migration finished already?' % (lib,), file=sys.stderr)
+        print('{} is a real directory! was the migration finished already?'.format(lib), file=sys.stderr)
         raise SystemExit(1)
 
     if os.path.islink(lib) and os.readlink(lib) == 'lib64':
-        print('%s is a symlink to lib64! did the migration succeed?' % (lib,), file=sys.stderr)
+        print('{} is a symlink to lib64! did the migration succeed?'.format(lib), file=sys.stderr)
         raise SystemExit(1)
 
     if not os.path.isdir(lib_new):
-        print('%s does not exist! did you --migrate?' % (lib_new,), file=sys.stderr)
+        print('{} does not exist! did you --migrate?'.format(lib_new), file=sys.stderr)
         raise SystemExit(1)
 
     if not os.path.islink(lib) or os.readlink(lib) != 'lib.new':
-        print('%s needs to be a symlink to lib.new!' % (lib,), file=sys.stderr)
+        print('{} needs to be a symlink to lib.new!'.format(lib), file=sys.stderr)
         raise SystemExit(1)
 
 
@@ -106,12 +106,12 @@ def nonfatal_remove(fp):
                 os.rmdir(fp)
             except OSError as e:
                 if e.errno not in (errno.EEXIST, errno.ENOTEMPTY):
-                    print('Removing %s failed: %s' % (fp, e), file=sys.stderr)
+                    print('Removing {} failed: {}'.format(fp, e), file=sys.stderr)
                     return False
         elif e.errno == errno.ENOENT:
             pass
         else:
-            print('Removing %s failed: %s' % (fp, e), file=sys.stderr)
+            print('Removing {} failed: {}'.format(fp, e), file=sys.stderr)
             return False
     return True
 
@@ -218,27 +218,27 @@ class MigrationState(object):
                                       if is_lib64_candidate(x))
             lib_unowned = unowned_files - lib64_unowned
 
-            print('directories that will be moved to %s:' % (lib_path[prefix],), file=sys.stderr)
+            print('directories that will be moved to {}:'.format(lib_path[prefix]), file=sys.stderr)
             for p in pure_lib:
-                print('\t%s' % (p,), file=sys.stderr)
-            print('\t(+ %d files)' % (len(lib_files),), file=sys.stderr)
+                print('\t{}'.format(p), file=sys.stderr)
+            print('\t(+ {} files)'.format(len(lib_files)), file=sys.stderr)
             print('', file=sys.stderr)
 
-            print('directories whose contents will be split between %s and %s:' % (lib_path[prefix], lib64_path[prefix]), file=sys.stderr)
+            print('directories whose contents will be split between {} and {}:'.format(lib_path[prefix], lib64_path[prefix]), file=sys.stderr)
             for p in mixed_lib:
-                print('\t%s' % (p,), file=sys.stderr)
+                print('\t{}'.format(p), file=sys.stderr)
 
             if lib_unowned:
                 print('', file=sys.stderr)
-                print('orphan files (not owned by any package) that will be moved to %s:' % (lib_path[prefix],), file=sys.stderr)
+                print('orphan files (not owned by any package) that will be moved to {}:'.format(lib_path[prefix]), file=sys.stderr)
                 for p in lib_unowned:
-                    print('\t%s' % (p,), file=sys.stderr)
+                    print('\t{}'.format(p), file=sys.stderr)
 
             if lib64_unowned:
                 print('', file=sys.stderr)
-                print('orphan files (not owned by any package) that will be kept in %s:' % (lib64_path[prefix],), file=sys.stderr)
+                print('orphan files (not owned by any package) that will be kept in {}:'.format(lib64_path[prefix]), file=sys.stderr)
                 for p in lib64_unowned:
-                    print('\t%s' % (p,), file=sys.stderr)
+                    print('\t{}'.format(p), file=sys.stderr)
 
             # prepare the exclude lists
             excludes = set()
@@ -257,11 +257,11 @@ class MigrationState(object):
             if conflicts:
                 print('', file=sys.stderr)
                 print('', file=sys.stderr)
-                print('One or more files are both in %s and %s, making the conversion impossible.' % (
+                print('One or more files are both in {} and {}, making the conversion impossible.'.format(
                     lib_path[prefix], lib32_path[prefix]), file=sys.stderr)
                 print('', file=sys.stderr)
                 for p in sorted(conflicts):
-                    print('\t%s' % (p,), file=sys.stderr)
+                    print('\t{}'.format(p), file=sys.stderr)
                 print('', file=sys.stderr)
                 print('Please report a bug at https://bugs.gentoo.org/, and do not proceed with', file=sys.stderr)
                 print('the migration until a proper solution is found.', file=sys.stderr)
@@ -271,11 +271,11 @@ class MigrationState(object):
             if conflicts:
                 print('', file=sys.stderr)
                 print('', file=sys.stderr)
-                print('One or more files are both in %s and %s, making the conversion impossible.' % (
+                print('One or more files are both in {} and {}, making the conversion impossible.'.format(
                     lib_path[prefix], lib64_path[prefix]), file=sys.stderr)
                 print('', file=sys.stderr)
                 for p in sorted(conflicts):
-                    print('\t%s' % (p,), file=sys.stderr)
+                    print('\t{}'.format(p), file=sys.stderr)
                 print('', file=sys.stderr)
                 print('Please report a bug at https://bugs.gentoo.org/, and do not proceed with', file=sys.stderr)
                 print('the migration until a proper solution is found.', file=sys.stderr)
@@ -296,7 +296,7 @@ class MigrationState(object):
             print('that installed them. The missing files are:', file=sys.stderr)
             print('', file=sys.stderr)
             for p in sorted(missing_files):
-                print('\t%s' % (p,), file=sys.stderr)
+                print('\t{}'.format(p), file=sys.stderr)
 
         # check for mountpoints, they are trouble
         mountpoints_staying = set()
@@ -324,7 +324,7 @@ class MigrationState(object):
             print('One or more mount points (or subvolumes) detected:', file=sys.stderr)
             print('', file=sys.stderr)
             for p in sorted(mountpoints_staying):
-                print('\t%s' % (p,), file=sys.stderr)
+                print('\t{}'.format(p), file=sys.stderr)
             print('', file=sys.stderr)
             print('Those directories do not need to be migrated. However, please make sure', file=sys.stderr)
             print('that fstab is using correct (real) paths to them.', file=sys.stderr)
@@ -335,7 +335,7 @@ class MigrationState(object):
             print('One or more mount points (or subvolumes) need to be migrated:', file=sys.stderr)
             print('', file=sys.stderr)
             for p in sorted(mountpoints_moved):
-                print('\t%s' % (p,), file=sys.stderr)
+                print('\t{}'.format(p), file=sys.stderr)
             print('', file=sys.stderr)
             print('Migration of mount points is not supported by the script. The files from them', file=sys.stderr)
             print('will be copied to the parent filesystem. The --finish subcommand will fail', file=sys.stderr)
@@ -355,12 +355,12 @@ class MigrationState(object):
                 lib_new = os.path.join(prefix, 'lib.new')
 
                 if pretend:
-                    print('mkdir %s' % lib_new)
+                    print('mkdir {}'.format(lib_new))
                 else:
                     os.mkdir(lib_new)
 
                 if not pretend:
-                    print('[%s] & %s -> %s ...' % (lib32, lib, lib_new), file=sys.stderr)
+                    print('[{}] & {} -> {} ...'.format(lib32, lib, lib_new), file=sys.stderr)
                 cmd = ['cp', '-a', '--reflink=auto', '--']
                 if os.path.isdir(lib32):
                     cmd.append(os.path.join(lib32, '.'))
@@ -376,19 +376,19 @@ class MigrationState(object):
                     else:
                         p = subprocess.Popen(cmd)
                         if p.wait() != 0:
-                            print('Non-successful return from cp: %d' % (p.returncode,), file=sys.stderr)
+                            print('Non-successful return from cp: {}'.format(p.returncode), file=sys.stderr)
                             raise SystemExit(1)
 
                 if self.excludes[prefix]:
                     if not pretend:
-                        print('Remove extraneous files from %s ...' % (lib_new,), file=sys.stderr)
+                        print('Remove extraneous files from {} ...'.format(lib_new), file=sys.stderr)
                     # remove excluded stuff
                     for p in self.excludes[prefix]:
                         fp = os.path.join(lib_new, p)
                         if pretend:
-                            print('rm %s' % fp)
-                            print('rmdir -p --ignore-fail-on-non-empty %s'
-                                  % os.path.dirname(fp))
+                            print('rm {}'.format(fp))
+                            print('rmdir -p --ignore-fail-on-non-empty {}'
+                                 .format(os.path.dirname(fp)))
                         else:
                             os.unlink(fp)
 
@@ -414,9 +414,9 @@ class MigrationState(object):
                 lib = os.path.join(prefix, 'lib')
                 lib_tmp = os.path.join(prefix, 'lib.tmp')
                 if pretend:
-                    print('ln -s -f -T lib.new %s' % lib)
+                    print('ln -s -f -T lib.new {}'.format(lib))
                 else:
-                    print('Updating: %s -> lib.new ...' % (lib,), file=sys.stderr)
+                    print('Updating: {} -> lib.new ...'.format(lib), file=sys.stderr)
                     os.symlink('lib.new', lib_tmp)
                     os.rename(lib_tmp, lib)
         except:
@@ -438,9 +438,9 @@ class MigrationState(object):
                 lib = os.path.join(prefix, 'lib')
                 lib_tmp = os.path.join(prefix, 'lib.tmp')
                 if pretend:
-                    print('ln -s -f -T lib64 %s' % lib)
+                    print('ln -s -f -T lib64 {}'.format(lib))
                 else:
-                    print('Updating: %s -> lib64 ...' % (lib,), file=sys.stderr)
+                    print('Updating: {} -> lib64 ...'.format(lib), file=sys.stderr)
                     os.symlink('lib64', lib_tmp)
                     os.rename(lib_tmp, lib)
         except:
@@ -458,9 +458,9 @@ class MigrationState(object):
         for prefix in self.prefixes:
             lib_new = os.path.join(prefix, 'lib.new')
             if pretend:
-                print('rm -rf -- %s' % lib_new)
+                print('rm -rf -- {}'.format(lib_new))
             else:
-                print('Removing: %s ...' % (lib_new,))
+                print('Removing: {} ...'.format(lib_new))
                 p = subprocess.Popen(['rm', '-rf', '--', lib_new])
                 if p.wait() != 0:
                     rm_failed = True
@@ -484,9 +484,9 @@ class MigrationState(object):
                 if resume and not os.path.isdir(lib_new):
                     continue
                 if pretend:
-                    print('mv -f -T %s %s' % (lib_new, lib))
+                    print('mv -f -T {} {}'.format(lib_new, lib))
                 else:
-                    print('Renaming %s -> %s ...' % (lib_new, lib), file=sys.stderr)
+                    print('Renaming {} -> {} ...'.format(lib_new, lib), file=sys.stderr)
                     # when resuming, 'lib' may have already been unlinked
                     # (otherwise, it must exist at this point)
                     if not resume or os.path.islink(lib):
@@ -511,10 +511,10 @@ class MigrationState(object):
                     if resume and os.path.islink(lib32):
                         continue
                     if pretend:
-                        print('rm -rf -- %s' % lib32)
-                        print('ln -s lib %s' % lib32)
+                        print('rm -rf -- {}'.format(lib32))
+                        print('ln -s lib {}'.format(lib32))
                     else:
-                        print('Removing: %s ...' % (lib32,), file=sys.stderr)
+                        print('Removing: {} ...'.format(lib32), file=sys.stderr)
                         if subprocess.Popen(['rm', '-rf', '--', lib32]).wait() != 0:
                             if os.path.ismount(lib32):
                                 print('', file=sys.stderr)
@@ -523,11 +523,11 @@ class MigrationState(object):
                                 print('a symlink. You can remove or reuse the backing device afterwards.', file=sys.stderr)
                             raise SystemExit(1)
                         else:
-                            print('Updating: %s -> lib ...' % (lib32,), file=sys.stderr)
+                            print('Updating: {} -> lib ...'.format(lib32), file=sys.stderr)
                             try:
                                 os.symlink('lib', lib32)
                             except OSError:
-                                print('Symlinking failed for %s, please symlink it manually to lib.', file=sys.stderr)
+                                print('Symlinking failed for {}, please symlink it manually to lib.', file=sys.stderr)
         except:
             print('', file=sys.stderr)
             print('An error occurred while replacing the "lib32" directories. Please look', file=sys.stderr)
@@ -543,7 +543,7 @@ class MigrationState(object):
         for prefix in self.prefixes:
             lib64 = os.path.join(prefix, 'lib64')
             if not pretend:
-                print('Removing stale files from %s ...' % (lib64,))
+                print('Removing stale files from {} ...'.format(lib64))
             for p in self.includes[prefix]:
                 if not os.path.islink(os.path.join(lib64, p)):
                     for root, dirs, files in os.walk(os.path.join(lib64, p), topdown=False):
@@ -552,11 +552,11 @@ class MigrationState(object):
                             rp = os.path.relpath(fp, lib64)
                             if rp not in self.excludes[prefix]:
                                 if pretend:
-                                    print('rm -d %s' % fp)
+                                    print('rm -d {}'.format(fp))
                                 elif not nonfatal_remove(fp):
                                     rm_failed = True
                 if pretend:
-                    print('rm -d %s' % os.path.join(lib64, p))
+                    print('rm -d {}'.format(os.path.join(lib64, p)))
                 elif not nonfatal_remove(os.path.join(lib64, p)):
                     rm_failed = True
 
@@ -678,7 +678,7 @@ def main():
             print('The state has been saved and the migration is ready to proceed.', file=sys.stderr)
             print('To initiate it, please run:', file=sys.stderr)
             print('', file=sys.stderr)
-            print('\t%s --migrate' % (sys.argv[0],), file=sys.stderr)
+            print('\t{} --migrate'.format(sys.argv[0]), file=sys.stderr)
             print('', file=sys.stderr)
             print('Please do not perform any changes to the system at this point.', file=sys.stderr)
             print('If you performed any changes, please rerun the analysis.', file=sys.stderr)
@@ -705,11 +705,11 @@ def main():
             print('correctly. It might be a good idea to try rebooting it. Once tested,', file=sys.stderr)
             print('complete the migration and clean up backup files via calling:', file=sys.stderr)
             print('', file=sys.stderr)
-            print('\t%s --finish' % (sys.argv[0],), file=sys.stderr)
+            print('\t{} --finish'.format(sys.argv[0]), file=sys.stderr)
             print('', file=sys.stderr)
             print('If you wish to revert the changes, run:', file=sys.stderr)
             print('', file=sys.stderr)
-            print('\t%s --rollback' % (sys.argv[0],), file=sys.stderr)
+            print('\t{} --rollback'.format(sys.argv[0]), file=sys.stderr)
     elif args.action.startswith('rollback'):
         if not args.action.endswith('force'):
             for p in prefixes:
@@ -756,9 +756,9 @@ def main():
                 print(' and all\npackages installing into lib32', end='', file=sys.stderr)
             print(', e.g.:', file=sys.stderr)
             print('', file=sys.stderr)
-            print('\temerge -1v %s' % os.path.join(top_dir, 'usr/lib/gcc'), end='', file=sys.stderr)
+            print('\temerge -1v {}'.format(os.path.join(top_dir, 'usr/lib/gcc')), end='', file=sys.stderr)
             if m.has_lib32:
-                print(' %s %s' % (os.path.join(top_dir, 'lib32'),
+                print(' {} {}'.format(os.path.join(top_dir, 'lib32'),
                                   os.path.join(top_dir, 'usr/lib32')),
                       end='', file=sys.stderr)
             print('', file=sys.stderr)
@@ -767,7 +767,7 @@ def main():
                 print('When the rebuilds are complete, the package manager should remove', file=sys.stderr)
                 print('the lib32 symlink. If it does not, do:', file=sys.stderr)
                 print('', file=sys.stderr)
-                print('\trm %s %s' % (os.path.join(top_dir, 'lib32'),
+                print('\trm {} {}'.format(os.path.join(top_dir, 'lib32'),
                                       os.path.join(top_dir, 'usr/lib32')),
                       file=sys.stderr)
     else:
