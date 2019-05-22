@@ -29,6 +29,11 @@ check:
 	+$(MAKE) EPYTHON=python2.7 TEST=01utf8 check-docker
 	+$(MAKE) LANG=C TEST=01utf8 check-docker
 	+$(MAKE) LANG=C EPYTHON=python2.7 TEST=01utf8 check-docker
+	# check whether invalid utf-8 filenames don't kill it
+	+$(MAKE) TEST=02nonutf8 check-docker
+	+$(MAKE) EPYTHON=python2.7 TEST=02nonutf8 check-docker
+	+$(MAKE) LANG=C TEST=02nonutf8 check-docker
+	+$(MAKE) LANG=C EPYTHON=python2.7 TEST=02nonutf8 check-docker
 
 install:
 	install -d $(DESTDIR)$(BINDIR)
