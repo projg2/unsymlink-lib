@@ -756,7 +756,7 @@ def main():
                 print(' and all\npackages installing into lib32', end='', file=sys.stderr)
             print(', e.g.:', file=sys.stderr)
             print('', file=sys.stderr)
-            print('\temerge -1v {}'.format(os.path.join(top_dir, b'usr/lib/gcc')), end='', file=sys.stderr)
+            print('\temerge -1v {}'.format(os.path.join(top_dir, b'usr/lib/gcc').decode()), end='', file=sys.stderr)
             if m.has_lib32:
                 print(' {} {}'.format(os.path.join(top_dir, b'lib32'),
                                   os.path.join(top_dir, b'usr/lib32')),
@@ -767,8 +767,8 @@ def main():
                 print('When the rebuilds are complete, the package manager should remove', file=sys.stderr)
                 print('the lib32 symlink. If it does not, do:', file=sys.stderr)
                 print('', file=sys.stderr)
-                print('\trm {} {}'.format(os.path.join(top_dir, b'lib32'),
-                                      os.path.join(top_dir, b'usr/lib32')),
+                print('\trm {} {}'.format(os.path.join(top_dir, b'lib32').decode(),
+                                      os.path.join(top_dir, b'usr/lib32').decode()),
                       file=sys.stderr)
     else:
         raise NotImplementedError()
