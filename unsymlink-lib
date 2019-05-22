@@ -634,11 +634,11 @@ def main():
             print('[Running as unprivileged user, results will not be saved]',
                   file=sys.stderr)
 
-    top_dir = args.root.encode()
+    top_dir = os.fsencode(args.root)
 
     if args.prefix:
         usr_merge = False
-        prefixes = [args.prefix.encode()]
+        prefixes = [os.fsencode(args.prefix)]
     else:
         # helpful consts
         usr_dir = os.path.join(top_dir, b'usr')
