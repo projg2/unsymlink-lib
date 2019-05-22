@@ -2,7 +2,6 @@ ARG STAGE
 FROM gentoo/portage AS portdir
 FROM ${STAGE}
 
-COPY unsymlink-lib /usr/local/bin
 COPY docker/01utf8/utf8-files-1.ebuild /usr/portage/app-misc/utf8-files/
 COPY --from=portdir /usr/portage/profiles /usr/portage/profiles
 RUN mkdir /usr/portage/metadata \
@@ -13,6 +12,7 @@ ARG EPYTHON
 RUN ${EPYTHON} --version
 ARG LANG
 RUN LANG=${LANG} locale
+COPY unsymlink-lib /usr/local/bin
 RUN LANG=${LANG} ${EPYTHON} /usr/local/bin/unsymlink-lib --analyze
 RUN LANG=${LANG} ${EPYTHON} /usr/local/bin/unsymlink-lib --migrate
 RUN LANG=${LANG} ${EPYTHON} /usr/local/bin/unsymlink-lib --finish
