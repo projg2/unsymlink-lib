@@ -597,6 +597,13 @@ class MigrationState(object):
                 raise
 
 
+def argv_to_bytes(arg):
+    if sys.hexversion >= 0x03000000:
+        return os.fsencode(arg)
+    else:
+        return arg
+
+
 def main():
     argp = argparse.ArgumentParser()
     argp.add_argument('-p', '--pretend', action='store_true',
@@ -634,11 +641,11 @@ def main():
             print('[Running as unprivileged user, results will not be saved]',
                   file=sys.stderr)
 
-    top_dir = os.fsencode(args.root)
+    top_dir = argv_to_bytes(args.root)
 
     if args.prefix:
         usr_merge = False
-        prefixes = [os.fsencode(args.prefix)]
+        prefixes = [argv_to_bytes(args.prefix)]
     else:
         # helpful consts
         usr_dir = os.path.join(top_dir, b'usr')
