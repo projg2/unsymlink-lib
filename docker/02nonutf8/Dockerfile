@@ -2,10 +2,10 @@ ARG STAGE
 FROM gentoo/portage AS portdir
 FROM ${STAGE}
 
-COPY docker/02nonutf8/nonutf8-files-1.ebuild /usr/portage/app-misc/nonutf8-files/
-COPY --from=portdir /usr/portage/profiles /usr/portage/profiles
-RUN mkdir /usr/portage/metadata \
+RUN mkdir -p /usr/portage/metadata \
 	&& echo "thin-manifests = true" > /usr/portage/metadata/layout.conf
+COPY --from=portdir /usr/portage/profiles /usr/portage/profiles
+COPY docker/02nonutf8/nonutf8-files-1.ebuild /usr/portage/app-misc/nonutf8-files/
 RUN emerge -1v nonutf8-files
 RUN touch $'/usr/lib/test\x80'.{txt,so} $'/usr/lib32/test\x80'.so
 ARG EPYTHON
