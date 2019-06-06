@@ -12,9 +12,15 @@ import subprocess
 import sys
 
 
+if sys.hexversion >= 0x03050000:
+    decode_error_handler = 'backslashreplace'
+else:
+    decode_error_handler = 'replace'
+
+
 def decode(value):
     if isinstance(value, bytes):
-        return value.decode('utf-8', errors='backslashreplace')
+        return value.decode('utf-8', errors=decode_error_handler)
     return value
 
 
