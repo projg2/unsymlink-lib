@@ -254,13 +254,13 @@ class MigrationState(object):
 
             if lib_unowned:
                 log('')
-                log('orphan files (not owned by any package) that will be moved to {}:', lib_path[prefix])
+                log('orphan dirs/files (not owned by any package) that will be moved to {}:', lib_path[prefix])
                 for p in sorted(lib_unowned):
                     log('\t{}', p)
 
             if lib64_unowned:
                 log('')
-                log('orphan files (not owned by any package) that will be kept in {}:', lib64_path[prefix])
+                log('orphan dirs/files (not owned by any package) that will be kept in {}:', lib64_path[prefix])
                 for p in sorted(lib64_unowned):
                     log('\t{}', p)
 
