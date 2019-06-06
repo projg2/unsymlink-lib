@@ -243,25 +243,25 @@ class MigrationState(object):
             lib_unowned = unowned_files - lib64_unowned
 
             log('directories that will be moved to {}:', lib_path[prefix])
-            for p in pure_lib:
+            for p in sorted(pure_lib):
                 log('\t{}', p)
             log('\t(+ {} files)', len(lib_files))
             log('')
 
             log('directories whose contents will be split between {} and {}:', lib_path[prefix], lib64_path[prefix])
-            for p in mixed_lib:
+            for p in sorted(mixed_lib):
                 log('\t{}', p)
 
             if lib_unowned:
                 log('')
                 log('orphan files (not owned by any package) that will be moved to {}:', lib_path[prefix])
-                for p in lib_unowned:
+                for p in sorted(lib_unowned):
                     log('\t{}', p)
 
             if lib64_unowned:
                 log('')
                 log('orphan files (not owned by any package) that will be kept in {}:', lib64_path[prefix])
-                for p in lib64_unowned:
+                for p in sorted(lib64_unowned):
                     log('\t{}', p)
 
             # prepare the exclude lists
