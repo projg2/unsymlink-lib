@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 from __future__ import print_function
 
@@ -11,9 +12,33 @@ import subprocess
 import sys
 
 
+def decode(value):
+    if isinstance(value, bytes):
+        return value.decode('utf-8', errors='replace')
+    return value
+
+
+def _log(template, *args, **kwargs):
+    template = decode(template)
+    print(
+        template.format(*(decode(arg) for arg in args)),
+        **kwargs
+    )
+
+
+def log(template, *args, **kwargs):
+    kwargs['file'] = sys.stderr
+    _log(template, *args, **kwargs)
+
+
+def log_to_stdout(template, *args, **kwargs):
+    kwargs['file'] = sys.stdout
+    _log(template, *args, **kwargs)
+
+
 def verify_initial(prefix):
     if not os.path.isdir(prefix):
-        print('{} does not exist! wtf?!'.format(prefix))
+        log('{} does not exist! wtf?!', prefix)
         raise SystemExit(1)
 
     lib64 = os.path.join(prefix, b'lib64')
@@ -22,33 +47,33 @@ def verify_initial(prefix):
     lib_new = os.path.join(prefix, b'lib.new')
 
     if not os.path.isdir(lib64) and not os.path.islink(lib64):
-        print('{} needs to exist as a real directory!'.format(lib64), file=sys.stderr)
+        log('{} needs to exist as a real directory!', lib64)
         raise SystemExit(1)
 
     if os.path.islink(lib32):
-        print('{} is a symlink! was the migration done already?'.format(lib32), file=sys.stderr)
+        log('{} is a symlink! was the migration done already?', lib32)
         raise SystemExit(1)
 
     if os.path.isdir(lib) and not os.path.islink(lib):
-        print('{} is a real directory! was the migration done already?'.format(lib), file=sys.stderr)
+        log('{} is a real directory! was the migration done already?', lib)
         raise SystemExit(1)
 
     if os.path.islink(lib) and os.readlink(lib) == b'lib.new':
-        print('{} is a symlink to lib.new! did you want to --finish?'.format(lib), file=sys.stderr)
+        log('{} is a symlink to lib.new! did you want to --finish?', lib)
         raise SystemExit(1)
 
     if not os.path.islink(lib) or os.readlink(lib) != b'lib64':
-        print('{} needs to be a symlink to lib64!'.format(lib), file=sys.stderr)
+        log('{} needs to be a symlink to lib64!', lib)
         raise SystemExit(1)
 
     if os.path.isdir(lib_new):
-        print('{} exists! do you need to remove failed migration?'.format(lib_new), file=sys.stderr)
+        log('{} exists! do you need to remove failed migration?', lib_new)
         raise SystemExit(1)
 
 
 def verify_migrated(prefix):
     if not os.path.isdir(prefix):
-        print('{} does not exist! wtf?!'.format(prefix))
+        log('{} does not exist! wtf?!', prefix)
         raise SystemExit(1)
 
     lib64 = os.path.join(prefix, b'lib64')
@@ -57,27 +82,27 @@ def verify_migrated(prefix):
     lib_new = os.path.join(prefix, b'lib.new')
 
     if not os.path.isdir(lib64) and not os.path.islink(lib64):
-        print('{} needs to exist as a real directory!'.format(lib64), file=sys.stderr)
+        log('{} needs to exist as a real directory!', lib64)
         raise SystemExit(1)
 
     if os.path.islink(lib32):
-        print('{} is a symlink! was the migration finished already?'.format(lib32), file=sys.stderr)
+        log('{} is a symlink! was the migration finished already?', lib32)
         raise SystemExit(1)
 
     if os.path.isdir(lib) and not os.path.islink(lib):
-        print('{} is a real directory! was the migration finished already?'.format(lib), file=sys.stderr)
+        log('{} is a real directory! was the migration finished already?', lib)
         raise SystemExit(1)
 
     if os.path.islink(lib) and os.readlink(lib) == b'lib64':
-        print('{} is a symlink to lib64! did the migration succeed?'.format(lib), file=sys.stderr)
+        log('{} is a symlink to lib64! did the migration succeed?', lib)
         raise SystemExit(1)
 
     if not os.path.isdir(lib_new):
-        print('{} does not exist! did you --migrate?'.format(lib_new), file=sys.stderr)
+        log('{} does not exist! did you --migrate?', lib_new)
         raise SystemExit(1)
 
     if not os.path.islink(lib) or os.readlink(lib) != b'lib.new':
-        print('{} needs to be a symlink to lib.new!'.format(lib), file=sys.stderr)
+        log('{} needs to be a symlink to lib.new!', lib)
         raise SystemExit(1)
 
 
@@ -106,12 +131,12 @@ def nonfatal_remove(fp):
                 os.rmdir(fp)
             except OSError as e:
                 if e.errno not in (errno.EEXIST, errno.ENOTEMPTY):
-                    print('Removing {} failed: {}'.format(fp, e), file=sys.stderr)
+                    log('Removing {} failed: {}', fp, e)
                     return False
         elif e.errno == errno.ENOENT:
             pass
         else:
-            print('Removing {} failed: {}'.format(fp, e), file=sys.stderr)
+            log('Removing {} failed: {}', fp, e)
             return False
     return True
 
@@ -133,7 +158,7 @@ class MigrationState(object):
     def analyze(self, usr_merge, real_prefixes):
         from portage import create_trees, _encodings
 
-        print('Analyzing files installed into lib & lib64...', file=sys.stderr)
+        log('Analyzing files installed into lib & lib64...')
 
         # use all canonical prefixes that could be present in vdb
         usr_prefix = os.path.join(self.eroot, b'usr')
@@ -177,8 +202,8 @@ class MigrationState(object):
         mixed_lib = {}
 
         if usr_merge:
-            print('', file=sys.stderr)
-            print('/usr merge detected!', file=sys.stderr)
+            log('')
+            log('/usr merge detected!')
 
             # figure out which of the prefixes is real, and the other
             # will be the aliased one
@@ -197,7 +222,7 @@ class MigrationState(object):
         self.includes = {}
 
         for prefix in real_prefixes:
-            print('', file=sys.stderr)
+            log('')
             lib_paths[prefix] = frozenset(lib_paths[prefix])
             lib32_paths[prefix] = frozenset(lib32_paths[prefix])
             lib64_paths[prefix] = frozenset(lib64_paths[prefix])
@@ -218,27 +243,27 @@ class MigrationState(object):
                                       if is_lib64_candidate(x))
             lib_unowned = unowned_files - lib64_unowned
 
-            print('directories that will be moved to {}:'.format(lib_path[prefix]), file=sys.stderr)
+            log('directories that will be moved to {}:', lib_path[prefix])
             for p in pure_lib:
-                print('\t{}'.format(p), file=sys.stderr)
-            print('\t(+ {} files)'.format(len(lib_files)), file=sys.stderr)
-            print('', file=sys.stderr)
+                log('\t{}', p)
+            log('\t(+ {} files)', len(lib_files))
+            log('')
 
-            print('directories whose contents will be split between {} and {}:'.format(lib_path[prefix], lib64_path[prefix]), file=sys.stderr)
+            log('directories whose contents will be split between {} and {}:', lib_path[prefix], lib64_path[prefix])
             for p in mixed_lib:
-                print('\t{}'.format(p), file=sys.stderr)
+                log('\t{}', p)
 
             if lib_unowned:
-                print('', file=sys.stderr)
-                print('orphan files (not owned by any package) that will be moved to {}:'.format(lib_path[prefix]), file=sys.stderr)
+                log('')
+                log('orphan files (not owned by any package) that will be moved to {}:', lib_path[prefix])
                 for p in lib_unowned:
-                    print('\t{}'.format(p), file=sys.stderr)
+                    log('\t{}', p)
 
             if lib64_unowned:
-                print('', file=sys.stderr)
-                print('orphan files (not owned by any package) that will be kept in {}:'.format(lib64_path[prefix]), file=sys.stderr)
+                log('')
+                log('orphan files (not owned by any package) that will be kept in {}:', lib64_path[prefix])
                 for p in lib64_unowned:
-                    print('\t{}'.format(p), file=sys.stderr)
+                    log('\t{}', p)
 
             # prepare the exclude lists
             excludes = set()
@@ -255,48 +280,48 @@ class MigrationState(object):
             # verify for conflicts
             conflicts = lib_paths[prefix] & lib32_paths[prefix]
             if conflicts:
-                print('', file=sys.stderr)
-                print('', file=sys.stderr)
-                print('One or more files are both in {} and {}, making the conversion impossible.'.format(
-                    lib_path[prefix], lib32_path[prefix]), file=sys.stderr)
-                print('', file=sys.stderr)
+                log('')
+                log('')
+                log('One or more files are both in {} and {}, making the conversion impossible.',
+                    lib_path[prefix], lib32_path[prefix])
+                log('')
                 for p in sorted(conflicts):
-                    print('\t{}'.format(p), file=sys.stderr)
-                print('', file=sys.stderr)
-                print('Please report a bug at https://bugs.gentoo.org/, and do not proceed with', file=sys.stderr)
-                print('the migration until a proper solution is found.', file=sys.stderr)
+                    log('\t{}', p)
+                log('')
+                log('Please report a bug at https://bugs.gentoo.org/, and do not proceed with')
+                log('the migration until a proper solution is found.')
                 raise SystemExit(1)
 
             conflicts = lib_paths[prefix] & lib64_paths[prefix]
             if conflicts:
-                print('', file=sys.stderr)
-                print('', file=sys.stderr)
-                print('One or more files are both in {} and {}, making the conversion impossible.'.format(
-                    lib_path[prefix], lib64_path[prefix]), file=sys.stderr)
-                print('', file=sys.stderr)
+                log('')
+                log('')
+                log('One or more files are both in {} and {}, making the conversion impossible.',
+                    lib_path[prefix], lib64_path[prefix])
+                log('')
                 for p in sorted(conflicts):
-                    print('\t{}'.format(p), file=sys.stderr)
-                print('', file=sys.stderr)
-                print('Please report a bug at https://bugs.gentoo.org/, and do not proceed with', file=sys.stderr)
-                print('the migration until a proper solution is found.', file=sys.stderr)
+                    log('\t{}', p)
+                log('')
+                log('Please report a bug at https://bugs.gentoo.org/, and do not proceed with')
+                log('the migration until a proper solution is found.')
                 raise SystemExit(1)
 
         self.has_lib32 = any(lib32_paths.values())
         if not self.has_lib32:
-            print('', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('Warning: no lib32 paths found. This is fine if you are running no-multilib,', file=sys.stderr)
-            print('otherwise this is suspicious.', file=sys.stderr)
+            log('')
+            log('')
+            log('Warning: no lib32 paths found. This is fine if you are running no-multilib,')
+            log('otherwise this is suspicious.')
 
         if missing_files:
-            print('', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('One or more package files are missing from the system. This should not', file=sys.stderr)
-            print('cause any problems but you may want to reinstall the packages', file=sys.stderr)
-            print('that installed them. The missing files are:', file=sys.stderr)
-            print('', file=sys.stderr)
+            log('')
+            log('')
+            log('One or more package files are missing from the system. This should not')
+            log('cause any problems but you may want to reinstall the packages')
+            log('that installed them. The missing files are:')
+            log('')
             for p in sorted(missing_files):
-                print('\t{}'.format(p), file=sys.stderr)
+                log('\t{}', p)
 
         # check for mountpoints, they are trouble
         mountpoints_staying = set()
@@ -319,32 +344,32 @@ class MigrationState(object):
                             dirnames.remove(d)
 
         if mountpoints_staying:
-            print('', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('One or more mount points (or subvolumes) detected:', file=sys.stderr)
-            print('', file=sys.stderr)
+            log('')
+            log('')
+            log('One or more mount points (or subvolumes) detected:')
+            log('')
             for p in sorted(mountpoints_staying):
-                print('\t{}'.format(p), file=sys.stderr)
-            print('', file=sys.stderr)
-            print('Those directories do not need to be migrated. However, please make sure', file=sys.stderr)
-            print('that fstab is using correct (real) paths to them.', file=sys.stderr)
+                log('\t{}', p)
+            log('')
+            log('Those directories do not need to be migrated. However, please make sure')
+            log('that fstab is using correct (real) paths to them.')
 
         if mountpoints_moved:
-            print('', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('One or more mount points (or subvolumes) need to be migrated:', file=sys.stderr)
-            print('', file=sys.stderr)
+            log('')
+            log('')
+            log('One or more mount points (or subvolumes) need to be migrated:')
+            log('')
             for p in sorted(mountpoints_moved):
-                print('\t{}'.format(p), file=sys.stderr)
-            print('', file=sys.stderr)
-            print('Migration of mount points is not supported by the script. The files from them', file=sys.stderr)
-            print('will be copied to the parent filesystem. The --finish subcommand will fail', file=sys.stderr)
-            print('at their removal, and will have to be resumed after unmounting the cleansed', file=sys.stderr)
-            print('file system (or removing the subvolume).', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('If this is acceptable, you can proceed with the migration. Alternatively, you', file=sys.stderr)
-            print('can unmount the relevant file systems, rerun the script (including rerunning', file=sys.stderr)
-            print('--analyze!) and migrate them manually afterwards.', file=sys.stderr)
+                log('\t{}', p)
+            log('')
+            log('Migration of mount points is not supported by the script. The files from them')
+            log('will be copied to the parent filesystem. The --finish subcommand will fail')
+            log('at their removal, and will have to be resumed after unmounting the cleansed')
+            log('file system (or removing the subvolume).')
+            log('')
+            log('If this is acceptable, you can proceed with the migration. Alternatively, you')
+            log('can unmount the relevant file systems, rerun the script (including rerunning')
+            log('--analyze!) and migrate them manually afterwards.')
 
     def migrate(self, pretend):
         try:
@@ -355,12 +380,12 @@ class MigrationState(object):
                 lib_new = os.path.join(prefix, b'lib.new')
 
                 if pretend:
-                    print('mkdir {}'.format(lib_new))
+                    log_to_stdout('mkdir {}', lib_new)
                 else:
                     os.mkdir(lib_new)
 
                 if not pretend:
-                    print('[{}] & {} -> {} ...'.format(lib32, lib, lib_new), file=sys.stderr)
+                    log('[{}] & {} -> {} ...', lib32, lib, lib_new)
                 cmd = [b'cp', b'-a', b'--reflink=auto', b'--']
                 if os.path.isdir(lib32):
                     cmd.append(os.path.join(lib32, b'.'))
@@ -372,23 +397,23 @@ class MigrationState(object):
 
                 if len(cmd) > 5:
                     if pretend:
-                        print(b' '.join(cmd))
+                        log_to_stdout(b' '.join(cmd))
                     else:
                         p = subprocess.Popen(cmd)
                         if p.wait() != 0:
-                            print('Non-successful return from cp: {}'.format(p.returncode), file=sys.stderr)
+                            log('Non-successful return from cp: {}', p.returncode)
                             raise SystemExit(1)
 
                 if self.excludes[prefix]:
                     if not pretend:
-                        print('Remove extraneous files from {} ...'.format(lib_new), file=sys.stderr)
+                        log('Remove extraneous files from {} ...', lib_new)
                     # remove excluded stuff
                     for p in self.excludes[prefix]:
                         fp = os.path.join(lib_new, p)
                         if pretend:
-                            print('rm {}'.format(fp))
-                            print('rmdir -p --ignore-fail-on-non-empty {}'
-                                 .format(os.path.dirname(fp)))
+                            log_to_stdout('rm {}', fp)
+                            log_to_stdout('rmdir -p --ignore-fail-on-non-empty {}',
+                                          os.path.dirname(fp))
                         else:
                             os.unlink(fp)
 
@@ -398,15 +423,15 @@ class MigrationState(object):
                                 if e.errno not in (errno.ENOTEMPTY, errno.EEXIST):
                                     raise
         except:
-            print('', file=sys.stderr)
-            print('An error occurred while creating the "lib.new" directories. Please look', file=sys.stderr)
-            print('at the backtrace following this message for details. The partially', file=sys.stderr)
-            print('created "lib.new" directories were left in case they were useful', file=sys.stderr)
-            print('for determining the cause of the error.', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
-            print('please use the --force-rollback action to reset your system.', file=sys.stderr)
-            print('', file=sys.stderr)
+            log('')
+            log('An error occurred while creating the "lib.new" directories. Please look')
+            log('at the backtrace following this message for details. The partially')
+            log('created "lib.new" directories were left in case they were useful')
+            log('for determining the cause of the error.')
+            log('')
+            log('Once you determine the cause of the error and would like to retry,')
+            log('please use the --force-rollback action to reset your system.')
+            log('')
             raise
 
         try:
@@ -414,21 +439,21 @@ class MigrationState(object):
                 lib = os.path.join(prefix, b'lib')
                 lib_tmp = os.path.join(prefix, b'lib.tmp')
                 if pretend:
-                    print('ln -s -f -T lib.new {}'.format(lib))
+                    log_to_stdout('ln -s -f -T lib.new {}', lib)
                 else:
-                    print('Updating: {} -> lib.new ...'.format(lib), file=sys.stderr)
+                    log('Updating: {} -> lib.new ...', lib)
                     os.symlink(b'lib.new', lib_tmp)
                     os.rename(lib_tmp, lib)
         except:
-            print('', file=sys.stderr)
-            print('An error occurred while updating the "lib" symlinks. Please look', file=sys.stderr)
-            print('at the backtrace following this message for details. The "lib.new"', file=sys.stderr)
-            print('directories are complete now but the "lib" symlinks were not updated', file=sys.stderr)
-            print('completely.', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
-            print('please use the --force-rollback action to reset your system.', file=sys.stderr)
-            print('', file=sys.stderr)
+            log('')
+            log('An error occurred while updating the "lib" symlinks. Please look')
+            log('at the backtrace following this message for details. The "lib.new"')
+            log('directories are complete now but the "lib" symlinks were not updated')
+            log('completely.')
+            log('')
+            log('Once you determine the cause of the error and would like to retry,')
+            log('please use the --force-rollback action to reset your system.')
+            log('')
             raise
 
     def rollback(self, pretend):
@@ -438,19 +463,19 @@ class MigrationState(object):
                 lib = os.path.join(prefix, b'lib')
                 lib_tmp = os.path.join(prefix, b'lib.tmp')
                 if pretend:
-                    print('ln -s -f -T lib64 {}'.format(lib))
+                    log_to_stdout('ln -s -f -T lib64 {}', lib)
                 else:
-                    print('Updating: {} -> lib64 ...'.format(lib), file=sys.stderr)
+                    log('Updating: {} -> lib64 ...', lib)
                     os.symlink(b'lib64', lib_tmp)
                     os.rename(lib_tmp, lib)
         except:
-            print('', file=sys.stderr)
-            print('An error occurred while restoring the "lib" symlinks. Please look', file=sys.stderr)
-            print('at the backtrace following this message for details.', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
-            print('please use the --force-rollback action to reset your system.', file=sys.stderr)
-            print('', file=sys.stderr)
+            log('')
+            log('An error occurred while restoring the "lib" symlinks. Please look')
+            log('at the backtrace following this message for details.')
+            log('')
+            log('Once you determine the cause of the error and would like to retry,')
+            log('please use the --force-rollback action to reset your system.')
+            log('')
             raise
 
         # clean up lib.new
@@ -458,21 +483,21 @@ class MigrationState(object):
         for prefix in self.prefixes:
             lib_new = os.path.join(prefix, b'lib.new')
             if pretend:
-                print('rm -rf -- {}'.format(lib_new))
+                log_to_stdout('rm -rf -- {}', lib_new)
             else:
-                print('Removing: {} ...'.format(lib_new))
+                log('Removing: {} ...', lib_new)
                 p = subprocess.Popen([b'rm', b'-rf', b'--', lib_new])
                 if p.wait() != 0:
                     rm_failed = True
 
         if rm_failed:
-            print('', file=sys.stderr)
-            print('An error occurred while cleaning up the "lib.new" directories.', file=sys.stderr)
-            print('This message should be preceded by error messages from the "rm"', file=sys.stderr)
-            print('utility.')
-            print('', file=sys.stderr)
-            print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
-            print('please use the --force-rollback action to reset your system.', file=sys.stderr)
+            log('')
+            log('An error occurred while cleaning up the "lib.new" directories.')
+            log('This message should be preceded by error messages from the "rm"')
+            log('utility.')
+            log('')
+            log('Once you determine the cause of the error and would like to retry,')
+            log('please use the --force-rollback action to reset your system.')
 
     def finish(self, pretend, resume):
         try:
@@ -484,22 +509,22 @@ class MigrationState(object):
                 if resume and not os.path.isdir(lib_new):
                     continue
                 if pretend:
-                    print('mv -f -T {} {}'.format(lib_new, lib))
+                    log_to_stdout('mv -f -T {} {}', lib_new, lib)
                 else:
-                    print('Renaming {} -> {} ...'.format(lib_new, lib), file=sys.stderr)
+                    log('Renaming {} -> {} ...', lib_new, lib)
                     # when resuming, 'lib' may have already been unlinked
                     # (otherwise, it must exist at this point)
                     if not resume or os.path.islink(lib):
                         os.unlink(lib)
                     os.rename(lib_new, lib)
         except:
-            print('', file=sys.stderr)
-            print('An error occurred while replacing the "lib" symlinks. Please look', file=sys.stderr)
-            print('at the backtrace following this message for details.', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
-            print('please use the --resume-finish action.', file=sys.stderr)
-            print('', file=sys.stderr)
+            log('')
+            log('An error occurred while replacing the "lib" symlinks. Please look')
+            log('at the backtrace following this message for details.')
+            log('')
+            log('Once you determine the cause of the error and would like to retry,')
+            log('please use the --resume-finish action.')
+            log('')
             raise
 
         try:
@@ -511,31 +536,31 @@ class MigrationState(object):
                     if resume and os.path.islink(lib32):
                         continue
                     if pretend:
-                        print('rm -rf -- {}'.format(lib32))
-                        print('ln -s lib {}'.format(lib32))
+                        log_to_stdout('rm -rf -- {}', lib32)
+                        log_to_stdout('ln -s lib {}', lib32)
                     else:
-                        print('Removing: {} ...'.format(lib32), file=sys.stderr)
+                        log('Removing: {} ...', lib32)
                         if subprocess.Popen([b'rm', b'-rf', b'--', lib32]).wait() != 0:
                             if os.path.ismount(lib32):
-                                print('', file=sys.stderr)
-                                print('Note: lib32 looks like a mount point. If all files inside it were removed', file=sys.stderr)
-                                print('successfully, you need to unmount it to let the program replace it with', file=sys.stderr)
-                                print('a symlink. You can remove or reuse the backing device afterwards.', file=sys.stderr)
+                                log('')
+                                log('Note: lib32 looks like a mount point. If all files inside it were removed')
+                                log('successfully, you need to unmount it to let the program replace it with')
+                                log('a symlink. You can remove or reuse the backing device afterwards.')
                             raise SystemExit(1)
                         else:
-                            print('Updating: {} -> lib ...'.format(lib32), file=sys.stderr)
+                            log('Updating: {} -> lib ...', lib32)
                             try:
                                 os.symlink(b'lib', lib32)
                             except OSError:
-                                print('Symlinking failed for {}, please symlink it manually to lib.', file=sys.stderr)
+                                log('Symlinking failed for {}, please symlink it manually to lib.')
         except:
-            print('', file=sys.stderr)
-            print('An error occurred while replacing the "lib32" directories. Please look', file=sys.stderr)
-            print('at the backtrace following this message for details.', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
-            print('please use the --resume-finish action.', file=sys.stderr)
-            print('', file=sys.stderr)
+            log('')
+            log('An error occurred while replacing the "lib32" directories. Please look')
+            log('at the backtrace following this message for details.')
+            log('')
+            log('Once you determine the cause of the error and would like to retry,')
+            log('please use the --resume-finish action.')
+            log('')
             raise
 
         # clean up extraneous files from 'lib64'
@@ -543,7 +568,7 @@ class MigrationState(object):
         for prefix in self.prefixes:
             lib64 = os.path.join(prefix, b'lib64')
             if not pretend:
-                print('Removing stale files from {} ...'.format(lib64))
+                log_to_stdout('Removing stale files from {} ...', lib64)
             for p in self.includes[prefix]:
                 if not os.path.islink(os.path.join(lib64, p)):
                     for root, dirs, files in os.walk(os.path.join(lib64, p), topdown=False):
@@ -552,22 +577,22 @@ class MigrationState(object):
                             rp = os.path.relpath(fp, lib64)
                             if rp not in self.excludes[prefix]:
                                 if pretend:
-                                    print('rm -d {}'.format(fp))
+                                    log_to_stdout('rm -d {}', fp)
                                 elif not nonfatal_remove(fp):
                                     rm_failed = True
                 if pretend:
-                    print('rm -d {}'.format(os.path.join(lib64, p)))
+                    log_to_stdout('rm -d {}', os.path.join(lib64, p))
                 elif not nonfatal_remove(os.path.join(lib64, p)):
                     rm_failed = True
 
         if rm_failed:
-            print('', file=sys.stderr)
-            print('An error occurred while cleaning up the "lib64" directories.', file=sys.stderr)
-            print('This message should be preceded by more specific error messages', file=sys.stderr)
-            print('(interspersed with progress output).')
-            print('', file=sys.stderr)
-            print('Once you determine the cause of the error and would like to retry,', file=sys.stderr)
-            print('please use the --resume-finish action.', file=sys.stderr)
+            log('')
+            log('An error occurred while cleaning up the "lib64" directories.')
+            log('This message should be preceded by more specific error messages')
+            log('(interspersed with progress output).')
+            log('')
+            log('Once you determine the cause of the error and would like to retry,')
+            log('please use the --resume-finish action.')
             raise SystemExit(1)
 
     def save_state(self):
@@ -605,6 +630,10 @@ def argv_to_bytes(arg):
 
 
 def main():
+    if sys.version_info.major == 2:
+        reload(sys)
+        sys.setdefaultencoding('utf-8')
+
     argp = argparse.ArgumentParser()
     argp.add_argument('-p', '--pretend', action='store_true',
                       help='Do not modify the system, only print what would happen')
@@ -638,8 +667,7 @@ def main():
         if args.action != 'analyze':
             argp.error('Requested action requires root privileges')
         else:
-            print('[Running as unprivileged user, results will not be saved]',
-                  file=sys.stderr)
+            log('[Running as unprivileged user, results will not be saved]')
 
     top_dir = argv_to_bytes(args.root)
 
@@ -680,43 +708,43 @@ def main():
 
         if is_root:
             m.save_state()
-            print('', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('The state has been saved and the migration is ready to proceed.', file=sys.stderr)
-            print('To initiate it, please run:', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('\t{} --migrate'.format(sys.argv[0]), file=sys.stderr)
-            print('', file=sys.stderr)
-            print('Please do not perform any changes to the system at this point.', file=sys.stderr)
-            print('If you performed any changes, please rerun the analysis.', file=sys.stderr)
+            log('')
+            log('')
+            log('The state has been saved and the migration is ready to proceed.')
+            log('To initiate it, please run:')
+            log('')
+            log('\t{} --migrate', sys.argv[0])
+            log('')
+            log('Please do not perform any changes to the system at this point.')
+            log('If you performed any changes, please rerun the analysis.')
         else:
-            print('', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('Everything looks good from here. However, you need to rerun', file=sys.stderr)
-            print('the process as root to confirm.', file=sys.stderr)
+            log('')
+            log('')
+            log('Everything looks good from here. However, you need to rerun')
+            log('the process as root to confirm.')
     elif args.action == 'migrate':
         for p in prefixes:
             verify_initial(p)
 
         m = MigrationState(top_dir)
         if not m.load_state():
-            print('State file could not be loaded. Did you run --analyze?', file=sys.stderr)
+            log('State file could not be loaded. Did you run --analyze?')
             return 1
         if args.pretend:
-            print('Those are the actions that would be performed:', file=sys.stderr)
+            log('Those are the actions that would be performed:')
         m.migrate(pretend=args.pretend)
         if not args.pretend:
-            print('', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('Initial migration complete. Please now test whether your system works', file=sys.stderr)
-            print('correctly. It might be a good idea to try rebooting it. Once tested,', file=sys.stderr)
-            print('complete the migration and clean up backup files via calling:', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('\t{} --finish'.format(sys.argv[0]), file=sys.stderr)
-            print('', file=sys.stderr)
-            print('If you wish to revert the changes, run:', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('\t{} --rollback'.format(sys.argv[0]), file=sys.stderr)
+            log('')
+            log('')
+            log('Initial migration complete. Please now test whether your system works')
+            log('correctly. It might be a good idea to try rebooting it. Once tested,')
+            log('complete the migration and clean up backup files via calling:')
+            log('')
+            log('\t{} --finish', sys.argv[0])
+            log('')
+            log('If you wish to revert the changes, run:')
+            log('')
+            log('\t{} --rollback', sys.argv[0])
     elif args.action.startswith('rollback'):
         if not args.action.endswith('force'):
             for p in prefixes:
@@ -724,17 +752,17 @@ def main():
 
         m = MigrationState(top_dir)
         if not m.load_state():
-            print('State file could not be loaded. Did you run --analyze?', file=sys.stderr)
+            log('State file could not be loaded. Did you run --analyze?')
             return 1
         if args.pretend:
-            print('Those are the actions that would be performed:', file=sys.stderr)
+            log('Those are the actions that would be performed:')
         m.rollback(pretend=args.pretend)
         if not args.pretend:
             m.clear_state()
-            print('', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('Rollback complete. Your system should now be as before the migration.', file=sys.stderr)
-            print('Please look into fixing your issues and try again.', file=sys.stderr)
+            log('')
+            log('')
+            log('Rollback complete. Your system should now be as before the migration.')
+            log('Please look into fixing your issues and try again.')
     elif args.action.startswith('finish'):
         if not args.action.endswith('resume'):
             for p in prefixes:
@@ -742,41 +770,42 @@ def main():
 
         m = MigrationState(top_dir)
         if not m.load_state():
-            print('State file could not be loaded. Did you run --analyze?', file=sys.stderr)
+            log('State file could not be loaded. Did you run --analyze?')
             return 1
         if args.pretend:
-            print('Those are the actions that would be performed:', file=sys.stderr)
+            log('Those are the actions that would be performed:')
         m.finish(pretend=args.pretend, resume=args.action.endswith('resume'))
         if not args.pretend:
             m.clear_state()
-            print('', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('Migration complete. Please switch to the new profiles, or add', file=sys.stderr)
-            print('the following to your make.conf (or equivalent):', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('\tSYMLINK_LIB=no', file=sys.stderr)
+            log('')
+            log('')
+            log('Migration complete. Please switch to the new profiles, or add')
+            log('the following to your make.conf (or equivalent):')
+            log('')
+            log('\tSYMLINK_LIB=no')
             if m.has_lib32:
-                print('\tLIBDIR_x86=lib', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('Afterwards, please rebuild all installed GCC versions', end='', file=sys.stderr)
+                log('\tLIBDIR_x86=lib')
+            log('')
+            log('Afterwards, please rebuild all installed GCC versions', end='')
             if m.has_lib32:
-                print(' and all\npackages installing into lib32', end='', file=sys.stderr)
-            print(', e.g.:', file=sys.stderr)
-            print('', file=sys.stderr)
-            print('\temerge -1v {}'.format(os.path.join(top_dir, b'usr/lib/gcc').decode()), end='', file=sys.stderr)
+                log(' and all\npackages installing into lib32', end='')
+            log(', e.g.:')
+            log('')
+            log('\temerge -1v {}', os.path.join(top_dir, b'usr/lib/gcc'), end='')
             if m.has_lib32:
-                print(' {} {}'.format(os.path.join(top_dir, b'lib32'),
-                                  os.path.join(top_dir, b'usr/lib32')),
-                      end='', file=sys.stderr)
-            print('', file=sys.stderr)
+                log(' {} {}',
+                    os.path.join(top_dir, b'lib32'),
+                    os.path.join(top_dir, b'usr/lib32'),
+                    end='')
+            log('')
             if m.has_lib32:
-                print('', file=sys.stderr)
-                print('When the rebuilds are complete, the package manager should remove', file=sys.stderr)
-                print('the lib32 symlink. If it does not, do:', file=sys.stderr)
-                print('', file=sys.stderr)
-                print('\trm {} {}'.format(os.path.join(top_dir, b'lib32').decode(),
-                                      os.path.join(top_dir, b'usr/lib32').decode()),
-                      file=sys.stderr)
+                log('')
+                log('When the rebuilds are complete, the package manager should remove')
+                log('the lib32 symlink. If it does not, do:')
+                log('')
+                log('\trm {} {}',
+                    os.path.join(top_dir, b'lib32'),
+                    os.path.join(top_dir, b'usr/lib32'))
     else:
         raise NotImplementedError()
 
