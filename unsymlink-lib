@@ -638,6 +638,7 @@ def main():
     if sys.version_info.major == 2:
         reload(sys)
         sys.setdefaultencoding('utf-8')
+    os.umask(0o22)
 
     argp = argparse.ArgumentParser()
     argp.add_argument('-p', '--pretend', action='store_true',
