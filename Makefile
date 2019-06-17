@@ -25,6 +25,8 @@ check:
 	# check multilib & no-multilib profiles
 	+$(MAKE) check-docker
 	+$(MAKE) STAGE=gentoo/stage3-amd64-nomultilib check-docker
+	# regression tests
+	+$(MAKE) TEST=00rmkeepfiles check-docker
 	# check python2.7
 	+$(MAKE) EPYTHON=python2.7 check-docker
 	$(DOCKER_CLEANUP)
