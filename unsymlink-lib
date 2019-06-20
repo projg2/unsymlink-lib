@@ -67,7 +67,8 @@ def verify_initial(prefix):
         log('{} is a symlink to lib.new! did you want to --finish?', lib)
         raise SystemExit(1)
 
-    if not os.path.islink(lib) or os.readlink(lib) != b'lib64':
+    if not os.path.islink(lib) or os.readlink(lib) not in (b'lib64',
+            os.path.join(prefix, b'lib64')):
         log('{} needs to be a symlink to lib64!', lib)
         raise SystemExit(1)
 
