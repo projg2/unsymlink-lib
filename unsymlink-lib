@@ -284,7 +284,9 @@ class MigrationState(object):
             self.excludes[prefix] = frozenset(excludes)
 
             # verify for conflicts
-            conflicts = lib_paths[prefix] & lib32_paths[prefix]
+            # 1. lib/foo and lib32/foo are going to be the same path now
+            conflicts = ((lib_paths[prefix] | lib_unowned)
+                         & lib32_paths[prefix])
             if conflicts:
                 log('')
                 log('')
@@ -298,6 +300,8 @@ class MigrationState(object):
                 log('the migration until a proper solution is found.')
                 raise SystemExit(1)
 
+            # 2. lib/foo and lib64/foo were *supposed* to be the same path now
+            # so we must not have two entries for each
             conflicts = lib_paths[prefix] & lib64_paths[prefix]
             if conflicts:
                 log('')
