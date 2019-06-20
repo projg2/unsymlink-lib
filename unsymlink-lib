@@ -152,6 +152,8 @@ def is_lib64_candidate(path):
         return True
     if b'.so.' in path:
         return True
+    if path in (b'locale',):
+        return True
     return False
 
 
