@@ -5,6 +5,9 @@ BINDIR = $(PREFIX)/bin
 # test defaults
 TEST = 00basic
 STAGE = gentoo/stage3-amd64
+# A tag known to have an unmigrated stage3, with passing tests.
+STAGE_TAG = 20190619
+PORTAGE_TAG = 20190618
 EPYTHON = python3.6
 LANG = C.UTF-8
 
@@ -17,7 +20,8 @@ distclean:
 
 check-docker:
 	docker build -f docker/$(TEST)/Dockerfile \
-		--build-arg STAGE=$(STAGE) \
+		--build-arg STAGE=$(STAGE):$(STAGE_TAG) \
+		--build-arg PORTAGE_TAG=$(PORTAGE_TAG) \
 		--build-arg EPYTHON=$(EPYTHON) \
 		--build-arg LANG=$(LANG) .
 
