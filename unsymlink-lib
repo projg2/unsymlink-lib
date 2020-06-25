@@ -383,7 +383,7 @@ class MigrationState(object):
             log('can unmount the relevant file systems, rerun the script (including rerunning')
             log('--analyze!) and migrate them manually afterwards.')
 
-    def migrate(self, pretend):
+    def migrate(self, pretend, hardlink=False):
         try:
             # create the lib.new directories
             for prefix in self.prefixes:
@@ -398,7 +398,8 @@ class MigrationState(object):
 
                 if not pretend:
                     log('[{}] & {} -> {} ...', lib32, lib, lib_new)
-                cmd = [b'cp', b'-a', b'--reflink=auto', b'--']
+                link_flag = b'--link' if hardlink else b'--reflink=auto'
+                cmd = [b'cp', b'-a', link_flag, b'--']
                 if os.path.isdir(lib32):
                     cmd.append(os.path.join(lib32, b'.'))
                 # include all appropriate pure&mixed lib stuff
@@ -672,6 +673,8 @@ def main():
     g = argp.add_argument_group('expert options')
     g.add_argument('-P', '--prefix',
                    help='Migrate only the specified prefix directory (EXPERT)')
+    g.add_argument('--hardlink', action='store_true',
+                   help='Use hard links instead of copying (EXPERT)')
     args = argp.parse_args()
 
     is_root = os.geteuid() == 0
@@ -745,7 +748,7 @@ def main():
             return 1
         if args.pretend:
             log('Those are the actions that would be performed:')
-        m.migrate(pretend=args.pretend)
+        m.migrate(pretend=args.pretend, hardlink=args.hardlink)
         if not args.pretend:
             log('')
             log('')
