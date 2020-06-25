@@ -1,5 +1,6 @@
 ARG STAGE
-FROM gentoo/portage AS portdir
+ARG PORTAGE_TAG
+FROM gentoo/portage:${PORTAGE_TAG} AS portdir
 FROM ${STAGE}
 
 RUN mkdir -p /usr/portage/metadata \
