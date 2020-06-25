@@ -34,6 +34,9 @@ check:
 	+$(MAKE) TEST=00rmkeepfiles check-docker
 	# check python2.7
 	+$(MAKE) EPYTHON=python2.7 check-docker
+	# Check for hardlink instead of copy
+	+$(MAKE) TEST=02hardlink check-docker
+	+$(MAKE) STAGE=gentoo/stage3-amd64-nomultilib TEST=02hardlink check-docker
 	$(DOCKER_CLEANUP)
 	# check whether utf-8 filenames don't kill it
 	+$(MAKE) TEST=01utf8 check-docker
