@@ -101,6 +101,13 @@ symlink, and removes the unsuccessful 'lib.new' directory. It can be
 used to quickly fix a system that has been broken by the migration.
 
 
+== Use on Prefix systems ==
+
+To migrate a Prefix system, pass the path to the system as ``--root``
+option.  If you are using unprivileged Prefix, you may use
+``--unprivileged`` to disable root privilege checks.
+
+
 == Failure protection ==
 
 The script tries to be resilient to failures, and avoid causing damage

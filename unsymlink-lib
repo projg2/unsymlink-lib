@@ -672,12 +672,14 @@ def main():
                    help='Attempt resuming failed --finish action')
     g = argp.add_argument_group('expert options')
     g.add_argument('-P', '--prefix',
-                   help='Migrate only the specified prefix directory (EXPERT)')
+                   help='Migrate only the specified prefix directory')
+    g.add_argument('-U', '--unprivileged', action='store_true',
+                   help='Permit running as unprivileged user (for Prefix)')
     g.add_argument('--hardlink', action='store_true',
-                   help='Use hard links instead of copying (EXPERT)')
+                   help='Use hard links instead of copying')
     args = argp.parse_args()
 
-    is_root = os.geteuid() == 0
+    is_root = os.geteuid() == 0 or args.unprivileged
 
     if not is_root:
         if args.action != 'analyze':

@@ -49,8 +49,10 @@ check:
 	+$(MAKE) EPYTHON=python2.7 TEST=02nonutf8 check-docker
 	+$(MAKE) LANG=C TEST=02nonutf8 check-docker
 	+$(MAKE) LANG=C EPYTHON=python2.7 TEST=02nonutf8 check-docker
+	$(DOCKER_CLEANUP)
 	# check for Prefix scenarios
 	+$(MAKE) TEST=03prefix check-docker
+	+$(MAKE) TEST=03prefix-unprivileged check-docker
 	$(DOCKER_CLEANUP)
 
 install:
