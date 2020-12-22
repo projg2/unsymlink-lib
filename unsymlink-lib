@@ -161,7 +161,7 @@ class MigrationState(object):
     __slots__ = ('eroot', 'excludes', 'includes', 'prefixes', 'has_lib32')
 
     def __init__(self, eroot):
-        self.eroot = eroot
+        self.eroot = os.path.normpath(eroot)
 
     def analyze(self, usr_merge, real_prefixes):
         from portage import create_trees, _encodings
@@ -185,7 +185,13 @@ class MigrationState(object):
         lib64_paths = dict((prefix, set()) for prefix in subprefixes)
 
         trees = create_trees(config_root=self.eroot)
-        vardb = trees[max(trees)]['vartree'].dbapi
+        vartree = trees[max(trees)]['vartree']
+        settings = vartree.settings
+        eprefix = settings['EPREFIX'].encode(_encodings['fs'])
+        assert self.eroot.endswith(eprefix), 'EROOT must be ROOT/EPREFIX.'
+        root = self.eroot[:-len(eprefix)] or b'/'
+
+        vardb = vartree.dbapi
         missing_files = set()
         for p in vardb.cpv_all():
             for f, details in vardb._dblink(p).getcontents().items():
@@ -193,7 +199,7 @@ class MigrationState(object):
                 # files contained within them
                 if details[0] == 'dir':
                     continue
-                f = os.path.join(self.eroot, f.encode(_encodings['fs']).lstrip(b'/'))
+                f = os.path.join(root, f.encode(_encodings['fs']).lstrip(b'/'))
                 for prefix in subprefixes:
                     for libdir, dest in (
                             (lib_path[prefix], lib_paths[prefix]),
